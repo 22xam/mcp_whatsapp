@@ -62,3 +62,13 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 #Claude
 .claude
+
+# Data — contains vectorized client knowledge (auto-generated)
+/data/*.sqlite
+
+# Client data — contains real client names, phones, companies
+# Copy clients.example.json and fill with your own data
+/config/clients.json
+
+# Knowledge docs — may contain confidential client documentation
+/config/knowledge-docs/

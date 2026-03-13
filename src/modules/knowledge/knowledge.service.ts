@@ -39,8 +39,11 @@ export class KnowledgeService implements OnModuleInit {
    * Searches for relevant knowledge using:
    * 1. FAQ keyword matching (fast, no embedding cost)
    * 2. Semantic vector search in SQLite
+   *
+   * @param allowedSources - Optional list of filenames to restrict the search to.
+   *   If omitted, all indexed documents are searched.
    */
-  async search(query: string): Promise<KnowledgeSearchResult | null> {
+  async search(query: string, allowedSources?: string[]): Promise<KnowledgeSearchResult | null> {
     const minScore = this.configLoader.botConfig.ai.ragMinScore;
     const topK = this.configLoader.botConfig.ai.ragTopK;
 
@@ -50,7 +53,7 @@ export class KnowledgeService implements OnModuleInit {
 
     // 2. Semantic search via embeddings
     const queryEmbedding = await this.embeddingProvider.embed(query);
-    const results = this.vectorSearch(queryEmbedding, topK);
+    const results = this.vectorSearch(queryEmbedding, topK, allowedSources);
 
     const best = results[0];
     if (best && best.score >= minScore) {
@@ -142,10 +145,11 @@ export class KnowledgeService implements OnModuleInit {
     this.logger.log(`Indexed ${toIndex.length} chunks into knowledge base`);
   }
 
-  private vectorSearch(queryEmbedding: number[], topK: number): KnowledgeSearchResult[] {
+  private vectorSearch(queryEmbedding: number[], topK: number, allowedSources?: string[]): KnowledgeSearchResult[] {
     const rows = this.db.prepare('SELECT id, content, source, embedding FROM vectors').all() as VectorRow[];
 
     return rows
+      .filter((row) => !allowedSources || allowedSources.includes(row.source))
       .map((row) => {
         const stored = new Float32Array(row.embedding.buffer);
         const score = this.cosineSimilarity(queryEmbedding, Array.from(stored));

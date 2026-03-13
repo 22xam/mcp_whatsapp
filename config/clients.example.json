@@ -1,0 +1,18 @@
+[
+  {
+    "phone": "5491123456789",
+    "name": "María García",
+    "company": "Empresa Ejemplo S.A.",
+    "systems": ["Sistema de Facturación"],
+    "knowledgeDocs": ["empresa-ejemplo-knowledge.md"],
+    "notes": "Usuaria principal del módulo de facturación"
+  },
+  {
+    "phone": "5491198765432",
+    "name": "Carlos López",
+    "company": "Otra Empresa S.R.L.",
+    "systems": ["Sistema de Gestión"],
+    "knowledgeDocs": ["otra-empresa-knowledge.md"],
+    "notes": ""
+  }
+]

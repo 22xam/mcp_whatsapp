@@ -1,217 +1,173 @@
 <p align="center">
-  <img src="assets/bug-mate-logo.png" alt="Bug-Mate Logo" width="180" />
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white"/>
+  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white"/>
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white"/>
 </p>
 
-# BugMate
-
-Bot de atención al cliente para WhatsApp, diseñado para software factories. Permite configurar flujos guiados, respuestas automáticas por IA, base de conocimiento semántica y escalación a soporte humano — todo desde archivos JSON, sin tocar código.
-
----
-
-## Índice
-
-- [Requisitos](#requisitos)
-- [Instalación](#instalación)
-- [Configuración inicial (.env)](#configuración-inicial-env)
-- [Proveedor de IA](#proveedor-de-ia)
-  - [Gemini (Google)](#gemini-google)
-  - [Ollama (local / open source)](#ollama-local--open-source)
-- [Configuración del bot (bot.config.json)](#configuración-del-bot-botconfigjson)
-  - [identity](#identity)
-  - [greeting](#greeting)
-  - [menu](#menu)
-  - [flows — Flujos guiados](#flows--flujos-guiados)
-  - [flows — Flujos de IA](#flows--flujos-de-ia)
-  - [ai](#ai)
-  - [humanDelay](#humandelay)
-  - [media — Procesar imágenes y audio](#media--procesar-imágenes-y-audio)
-  - [escalation](#escalation)
-- [Clientes (clients.json)](#clientes-clientsjson)
-- [Base de conocimiento](#base-de-conocimiento)
-  - [FAQs estructuradas (knowledge.json)](#faqs-estructuradas-knowledgejson)
-  - [Documentos de conocimiento (knowledge-docs/)](#documentos-de-conocimiento-knowledge-docs)
-- [Grupo de control (toma de conversación humana)](#grupo-de-control-toma-de-conversación-humana)
-- [Estructura de archivos](#estructura-de-archivos)
-- [Ejemplos completos de flujos](#ejemplos-completos-de-flujos)
+<h1 align="center">BugMate 🤖</h1>
+<p align="center">WhatsApp AI support bot — fully configurable via JSON, no code changes needed.</p>
 
 ---
 
-## Requisitos
+## Table of Contents
 
-- Node.js 18+
-- npm
-- Una cuenta de WhatsApp vinculada al bot (número dedicado recomendado)
-- Un proveedor de IA: **Gemini** (API key gratuita) o **Ollama** (local, open source)
+1. [Quick Start](#quick-start)
+2. [Environment Variables](#environment-variables)
+3. [AI Providers](#ai-providers)
+4. [Bot Configuration (bot.config.json)](#bot-configuration)
+   - [identity](#identity)
+   - [greeting](#greeting)
+   - [menu](#menu)
+   - [Conditional Flows](#conditional-flows)
+   - [Legacy Flows](#legacy-flows)
+   - [AI Settings](#ai-settings)
+   - [humanDelay](#humandelay)
+   - [media](#media)
+   - [escalation](#escalation)
+5. [Conditional Flow DSL — Complete Reference](#conditional-flow-dsl)
+   - [Step types](#step-types)
+   - [System variables](#system-variables)
+   - [Actions](#actions)
+   - [Full example](#full-example)
+6. [Clients (clients.json)](#clients)
+7. [Knowledge Base](#knowledge-base)
+   - [FAQ (knowledge.json)](#faq)
+   - [Documents (knowledge-docs/)](#documents)
+   - [Per-client knowledge filtering](#per-client-knowledge-filtering)
+8. [Control Group Commands](#control-group-commands)
+9. [Human Takeover](#human-takeover)
+10. [Designing Your Own Bot](#designing-your-own-bot)
+11. [File Structure](#file-structure)
 
 ---
 
-## Instalación
+## Quick Start
 
 ```bash
-git clone https://github.com/tu-usuario/bug-mate.git
+# 1. Clone and install
+git clone https://github.com/your-org/bug-mate.git
 cd bug-mate
 npm install
+
+# 2. Configure
 cp .env.example .env
+# Edit .env with your settings
+
+# 3. Run
+npm run start:dev
+# Scan the QR code with WhatsApp
 ```
-
-Editá `.env` con tu configuración, luego:
-
-```bash
-npm run start
-```
-
-Al iniciar por primera vez, el bot mostrará un código QR en la consola. Escanealo desde WhatsApp en tu teléfono (**Dispositivos vinculados → Vincular dispositivo**). La sesión queda guardada en `.wwebjs_auth/` y no necesitás escanear de nuevo.
 
 ---
 
-## Configuración inicial (.env)
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
 
 ```env
-# Proveedor de IA: "gemini" o "ollama"
+# ── AI Provider ────────────────────────────────────────────
+# Which AI provider to use: "gemini" or "ollama"
 AI_PROVIDER=gemini
 
-# API key de Gemini (solo si AI_PROVIDER=gemini)
-GEMINI_API_KEY=tu_api_key
+# ── Gemini (Google) ────────────────────────────────────────
+# Get your free key at https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your_key_here
 
-# URL de Ollama (solo si AI_PROVIDER=ollama)
+# ── Ollama (local/open source) ─────────────────────────────
 OLLAMA_URL=http://localhost:11434
 OLLAMA_AUTO_START=false
 
-# Tu nombre — aparece en mensajes de escalación al cliente
-DEVELOPER_NAME=Ignacio
-
-# Tu número de WhatsApp en formato internacional, solo dígitos
-# Ejemplo Argentina: 5491123456789
+# ── Developer Contact ──────────────────────────────────────
+# Your WhatsApp number (digits only, no + or spaces)
+# Argentina (+54): 5491123456789
 DEVELOPER_PHONE=5491123456789
 
-# ID del grupo de control (opcional, ver sección más abajo)
+# ── Control Group (optional) ───────────────────────────────
+# WhatsApp group ID for sending admin commands to the bot.
+# Run !grupos from any group to discover your group IDs.
 # CONTROL_GROUP_ID=120363XXXXXXXXXX@g.us
 
+# ── App ────────────────────────────────────────────────────
 PORT=3000
 ```
 
 ---
 
-## Proveedor de IA
+## AI Providers
 
-### Gemini (Google)
+### Gemini (Google) — default
 
-La opción más simple para empezar. Tiene un tier gratuito.
+- Set `AI_PROVIDER=gemini` and `GEMINI_API_KEY=...`
+- Default model: `gemini-2.0-flash`
+- Embedding model: `text-embedding-004`
+- Free tier available at [aistudio.google.com](https://aistudio.google.com)
 
-1. Obtené tu API key en [aistudio.google.com](https://aistudio.google.com/app/apikey)
-2. En `.env`:
-   ```env
-   AI_PROVIDER=gemini
-   GEMINI_API_KEY=tu_api_key
-   ```
-3. En `config/bot.config.json`, sección `ai`:
-   ```json
-   "model": "gemini-2.0-flash",
-   "embeddingModel": "gemini-embedding-001"
-   ```
+### Ollama (local, open source)
 
-**Modelos disponibles:** `gemini-2.0-flash` (recomendado, rápido), `gemini-1.5-pro` (más capaz, más lento).
+- Set `AI_PROVIDER=ollama`
+- Install Ollama: [ollama.ai](https://ollama.ai)
+- Pull the models:
+  ```bash
+  ollama pull qwen3:8b          # chat model
+  ollama pull nomic-embed-text  # embedding model (required for knowledge base)
+  ```
+- Configure models in `bot.config.json`:
+  ```json
+  "ai": {
+    "model": "qwen3:8b",
+    "embeddingModel": "nomic-embed-text"
+  }
+  ```
 
----
-
-### Ollama (local / open source)
-
-Corrés la IA completamente en tu máquina, sin cuotas ni API keys.
-
-#### 1. Instalar Ollama
-
-Descargá desde [ollama.com](https://ollama.com) e instalá.
-
-#### 2. Descargar los modelos
-
-Necesitás un modelo de **chat** y un modelo de **embeddings** (para la base de conocimiento):
-
-```bash
-# Modelo de chat (elegí uno):
-ollama pull qwen3:8b       # Recomendado — buena calidad, 5 GB
-ollama pull llama3.2:3b    # Más liviano, 2 GB
-ollama pull mistral:7b     # Alternativa sólida, 4 GB
-
-# Modelo de embeddings (requerido para búsqueda semántica en documentos):
-ollama pull nomic-embed-text
-```
-
-#### 3. Configurar
-
-En `.env`:
-```env
-AI_PROVIDER=ollama
-OLLAMA_URL=http://localhost:11434
-OLLAMA_AUTO_START=false  # "true" si querés que el bot inicie Ollama automáticamente
-```
-
-En `config/bot.config.json`, sección `ai`:
-```json
-"model": "qwen3:8b",
-"embeddingModel": "nomic-embed-text"
-```
-
-#### Comparación de modelos de chat para Ollama
-
-| Modelo | Tamaño | Calidad | Velocidad |
-|--------|--------|---------|-----------|
-| `qwen3:8b` | 5 GB | ⭐⭐⭐⭐⭐ | Media |
-| `llama3.2:3b` | 2 GB | ⭐⭐⭐ | Rápida |
-| `mistral:7b` | 4 GB | ⭐⭐⭐⭐ | Media |
-| `llama3.1:8b` | 5 GB | ⭐⭐⭐⭐ | Media |
-
-> **Nota:** Si no usás búsqueda semántica en documentos (solo FAQs por keywords o flows de IA con `"useKnowledge": false`), no necesitás `nomic-embed-text`.
+| | Gemini | Ollama |
+|---|---|---|
+| Cost | Free tier (limited) | Free (runs locally) |
+| Privacy | Cloud (Google) | 100% local |
+| Speed | Fast | Depends on hardware |
+| Quality | High | Depends on model |
+| Internet required | Yes | No |
 
 ---
 
-## Configuración del bot (bot.config.json)
+## Bot Configuration
 
-Toda la lógica conversacional vive en `config/bot.config.json`. No necesitás reiniciar el servidor para ver cambios en los textos — solo reiniciá el proceso.
-
----
+All bot behavior is configured in `config/bot.config.json`. **No code changes are needed** — swap the JSON to deploy a completely different bot.
 
 ### identity
-
-Define quién es el bot.
 
 ```json
 "identity": {
   "name": "BugMate",
-  "company": "CuyoCode",
-  "developerName": "Ignacio",
-  "tone": "amigable, empático y conciso. Usá lenguaje natural como si fueras una persona real."
+  "company": "Your Company",
+  "developerName": "Nacho",
+  "tone": "amigable, empático, profesional y conciso."
 }
 ```
 
-Estos valores están disponibles como `{botName}`, `{company}`, `{developerName}` y `{tone}` en todos los templates de mensajes y en el system prompt de la IA.
-
----
+| Field | Description |
+|---|---|
+| `name` | Bot name shown in messages |
+| `company` | Company name used in templates |
+| `developerName` | Developer name shown in escalation messages |
+| `tone` | Tone instruction injected into the AI system prompt |
 
 ### greeting
-
-Configura el saludo que recibe el usuario al iniciar o retomar una conversación.
 
 ```json
 "greeting": {
   "enabled": true,
-  "message": "¡Hola {clientName}! 👋 Soy *{botName}*, el asistente de *{company}*.\n\n¿En qué te puedo ayudar hoy?",
+  "message": "¡Hola {clientName}! Soy *{botName}* de *{company}*.",
   "unknownClientName": "👋",
   "sessionTimeoutMinutes": 30
 }
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `enabled` | `false` para ir directo al menú sin saludar |
-| `message` | Texto del saludo. Soporta `{clientName}`, `{botName}`, `{company}` |
-| `unknownClientName` | Fallback cuando el número no está en `clients.json` |
-| `sessionTimeoutMinutes` | Minutos de inactividad antes de reiniciar la sesión y mostrar el saludo de nuevo |
-
----
+- `{clientName}` → resolved from `clients.json` by phone number, or `unknownClientName` if not found
+- `sessionTimeoutMinutes` → inactivity timeout before the session resets and the greeting is sent again
 
 ### menu
 
-Define las opciones que ve el usuario. Podés agregar todas las que necesites.
+The top-level menu shown after the greeting.
 
 ```json
 "menu": {
@@ -219,131 +175,357 @@ Define las opciones que ve el usuario. Podés agregar todas las que necesites.
   "invalidChoiceMessage": "No entendí tu respuesta.",
   "unrecognizedOptionMessage": "Opción no reconocida.",
   "options": [
-    { "id": "1", "label": "🐛 Reportar un error",     "flowId": "reportError" },
-    { "id": "2", "label": "❓ Consultar una duda",     "flowId": "queryKnowledge" },
-    { "id": "3", "label": "👨‍💻 Hablar con soporte",   "action": "ESCALATE" },
-    { "id": "4", "label": "📋 Ver menú de nuevo",      "action": "SHOW_MENU" }
+    { "id": "1", "label": "Soy cliente", "conditionalFlowId": "clientFlow" },
+    { "id": "2", "label": "Tengo una consulta", "conditionalFlowId": "prospectFlow" },
+    { "id": "3", "label": "Contactar atención", "action": "ESCALATE" }
   ]
 }
 ```
 
-**Tipos de opción:**
+Each option can use one of three routing mechanisms:
 
-| Propiedad | Descripción |
-|-----------|-------------|
-| `flowId` | Apunta a un flow definido en `flows`. Puede ser `guided` o `ai` |
-| `action: "ESCALATE"` | Escala directamente al desarrollador |
-| `action: "SHOW_MENU"` | Vuelve a mostrar el menú |
+| Field | Type | Description |
+|---|---|---|
+| `action` | `"ESCALATE"` \| `"SHOW_MENU"` | Built-in action, no flow needed |
+| `conditionalFlowId` | string | ID of a conditional flow in the `conditionalFlows` map |
+| `conditionalFlowStartStep` | string | Override the flow's default `startStep` (optional) |
+| `flowId` | string | ID of a legacy flow in the `flows` map |
+
+**Minimal bot — no menus:** Set `"options": []` and the bot will only greet and wait. The developer can handle the conversation manually via human takeover.
 
 ---
 
-### flows — Flujos guiados
+## Conditional Flows
 
-Un flujo guiado hace preguntas al usuario paso a paso y al final notifica al desarrollador con las respuestas recolectadas.
+The conditional flow system is the recommended way to build complex, branching conversations. It uses a **named-step graph** — each step has an ID and declares where to go next.
+
+```json
+"conditionalFlows": {
+  "myFlow": {
+    "startStep": "firstStep",
+    "steps": {
+      "firstStep": { ... },
+      "secondStep": { ... }
+    }
+  }
+}
+```
+
+Flows are triggered from a menu option:
+
+```json
+{ "id": "1", "label": "Soy cliente", "conditionalFlowId": "clientFlow" }
+```
+
+---
+
+## Conditional Flow DSL
+
+### Step Types
+
+#### `input` — Collect user text
+
+Sends a prompt and waits for the user's response. The response is saved in `flowData`.
+
+```json
+{
+  "type": "input",
+  "prompt": "¿Cuál es tu consulta?",
+  "saveAs": "userQuery",
+  "acceptMedia": false,
+  "mediaFallback": "[archivo adjunto]",
+  "nextStep": "nextStepId"
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `prompt` | ✅ | Text sent to user. Supports `{variable}` interpolation. |
+| `saveAs` | ✅ | `flowData` key where the response is stored |
+| `acceptMedia` | ❌ | Whether to accept images/audio (default: false) |
+| `mediaFallback` | ❌ | Text stored when media is received instead of text |
+| `nextStep` | ✅ | Next step ID or `"END"` |
+
+---
+
+#### `menu` — Present numbered options
+
+Shows a numbered list and routes based on user choice.
+
+```json
+{
+  "type": "menu",
+  "message": "¿En qué te puedo ayudar?",
+  "options": [
+    { "id": "1", "label": "Reportar error", "nextStep": "askDescription" },
+    { "id": "2", "label": "Hablar con desarrollo", "action": "ESCALATE", "notification": "..." }
+  ],
+  "invalidMessage": "Por favor elegí una opción válida."
+}
+```
+
+Each option can have:
+
+| Field | Description |
+|---|---|
+| `id` | Number/text the user types to select this option |
+| `label` | Text shown in the menu |
+| `nextStep` | Step to navigate to |
+| `action` | Terminal action (`ESCALATE`, `END`, `SHOW_MENU`, `NOTIFY_DEVELOPER`) |
+| `notification` | Developer notification template (used with `ESCALATE` or `NOTIFY_DEVELOPER`) |
+
+---
+
+#### `validate` — Match input against a data source
+
+Checks a previously collected variable against a data source. Routes to `onMatch` or `onNoMatch` depending on the result.
+
+Currently supported data source: `"clients"` (from `clients.json`).
+
+Matching is fuzzy: case-insensitive, strips legal suffixes (S.A., S.R.L., etc.), checks both `name` and `company` fields. Also matches by exact phone number.
+
+```json
+{
+  "type": "validate",
+  "dataSource": "clients",
+  "inputVar": "clientInput",
+  "onMatch": {
+    "saveAs": "matchedClient",
+    "nextStep": "clientMenu"
+  },
+  "onNoMatch": {
+    "message": "No encontré tu empresa. Voy a notificar a {developerName}.",
+    "action": "ESCALATE",
+    "notification": "⚠️ Empresa no encontrada: {clientInput} — {senderPhone}"
+  }
+}
+```
+
+When a match is found, the full client record is saved as an object under `saveAs`. You can then use `{matchedClient.name}`, `{matchedClient.company}`, `{matchedClient.phone}`, etc. in any subsequent template.
+
+---
+
+#### `message` — Send a static message + optional action
+
+Sends a message and optionally triggers a side-effect (notify developer, escalate, end flow).
+
+```json
+{
+  "type": "message",
+  "text": "✅ Reporte registrado. Gracias! 🙏",
+  "action": "NOTIFY_DEVELOPER",
+  "notification": "🐛 Error de {matchedClient.name}: {errorDescription}",
+  "nextStep": "END"
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `text` | ✅ | Message sent to user. Supports `{variable}` interpolation. |
+| `action` | ❌ | Side-effect triggered after message |
+| `notification` | ❌ | Developer notification template |
+| `nextStep` | ✅ | Next step ID or `"END"` |
+
+---
+
+#### `ai` — AI-powered response with optional RAG
+
+Sends an input prompt, then processes the user's query with the AI provider, optionally searching the knowledge base first.
+
+```json
+{
+  "type": "ai",
+  "inputPrompt": "Contame tu consulta:",
+  "textOnlyMessage": "Por favor escribí tu consulta con texto.",
+  "useKnowledge": true,
+  "systemPromptOverride": "Sos un asistente de soporte de {company}...",
+  "ragContextInstruction": "Respondé de forma natural y conversacional.",
+  "fallbackToEscalation": true,
+  "noResultMessage": "No encontré información. Voy a notificar a {developerName}.",
+  "noResultNotification": "❓ Consulta sin respuesta: {userQuery}",
+  "continuePrompt": "¿Hay algo más en lo que pueda ayudarte?",
+  "saveQueryAs": "userQuery",
+  "nextStep": "END"
+}
+```
+
+| Field | Description |
+|---|---|
+| `useKnowledge` | Search the knowledge base before calling the AI |
+| `systemPromptOverride` | Custom system prompt for this step only |
+| `ragContextInstruction` | Additional instruction appended to the system prompt when a knowledge result is found |
+| `fallbackToEscalation` | Escalate to developer when no knowledge result found (overrides global setting) |
+| `noResultMessage` | Message sent to user when no knowledge result found |
+| `noResultNotification` | Developer notification when no knowledge result found |
+| `saveQueryAs` | `flowData` key where the user's query is stored (default: `userQuery`) |
+| `continuePrompt` | Message sent after a successful AI response inviting further interaction |
+
+> **Note:** If the matched client has no `knowledgeDocs` configured in `clients.json`, the knowledge search is skipped entirely and the step falls through to escalation. This prevents clients from accessing other clients' documentation.
+
+---
+
+### System Variables
+
+These variables are always available in any template (`{variable}` syntax):
+
+| Variable | Value |
+|---|---|
+| `{senderPhone}` | User's phone number (digits only, no suffix) |
+| `{clientName}` | Client name from `clients.json`, or the `unknownClientName` emoji |
+| `{timestamp}` | Current date/time (Argentina timezone) |
+| `{flowPath}` | Breadcrumb of steps visited, e.g. `askClientName → validateClient → clientMenu` |
+| `{developerName}` | From `identity.developerName` |
+| `{company}` | From `identity.company` |
+| `{botName}` | From `identity.name` |
+
+Plus any variable collected via `saveAs` in `input` steps, and dot-notation access to objects from `validate` steps (e.g. `{matchedClient.name}`, `{matchedClient.company}`).
+
+---
+
+### Actions
+
+| Action | Description |
+|---|---|
+| `END` | Finish the flow, return session to IDLE |
+| `ESCALATE` | Send `escalation.clientMessage` to user + `notification` to developer. Bot stops responding (state: ESCALATED) |
+| `NOTIFY_DEVELOPER` | Send `notification` to developer, continue the flow normally |
+| `SHOW_MENU` | Finish the flow and show the top-level menu again |
+
+---
+
+### Full Example — Client support flow with validation
+
+```json
+"conditionalFlows": {
+  "clientFlow": {
+    "startStep": "askClientName",
+    "steps": {
+
+      "askClientName": {
+        "type": "input",
+        "prompt": "Ingresá tu nombre o empresa para verificar tu cuenta:",
+        "saveAs": "clientInput",
+        "nextStep": "validateClient"
+      },
+
+      "validateClient": {
+        "type": "validate",
+        "dataSource": "clients",
+        "inputVar": "clientInput",
+        "onMatch": {
+          "saveAs": "matchedClient",
+          "nextStep": "clientMenu"
+        },
+        "onNoMatch": {
+          "message": "No encontré tu empresa. Voy a notificar a {developerName}.",
+          "action": "ESCALATE",
+          "notification": "⚠️ Empresa no encontrada\n\nTeléfono: {senderPhone}\nIngresó: {clientInput}\nHora: {timestamp}"
+        }
+      },
+
+      "clientMenu": {
+        "type": "menu",
+        "message": "¡Hola {matchedClient.name}! ¿En qué te ayudo?",
+        "options": [
+          { "id": "1", "label": "Reportar error", "nextStep": "askError" },
+          { "id": "2", "label": "Consulta técnica", "nextStep": "aiQuery" },
+          { "id": "3", "label": "Hablar con desarrollo", "action": "ESCALATE",
+            "notification": "👨‍💻 Solicitud de {matchedClient.name} ({matchedClient.company}) — {senderPhone}" }
+        ],
+        "invalidMessage": "Elegí una opción del 1 al 3."
+      },
+
+      "askError": {
+        "type": "input",
+        "prompt": "Describí el error:",
+        "saveAs": "errorDescription",
+        "nextStep": "askScreenshot"
+      },
+
+      "askScreenshot": {
+        "type": "input",
+        "prompt": "¿Captura de pantalla? Sino escribí *no tengo*.",
+        "saveAs": "errorScreenshot",
+        "acceptMedia": true,
+        "mediaFallback": "[imagen adjunta]",
+        "nextStep": "confirmError"
+      },
+
+      "confirmError": {
+        "type": "message",
+        "text": "✅ Reporte registrado. Te contactamos a la brevedad. 🙏",
+        "action": "NOTIFY_DEVELOPER",
+        "notification": "🐛 Error de {matchedClient.name} ({matchedClient.company})\nTeléfono: {senderPhone}\nDescripción: {errorDescription}\nCaptura: {errorScreenshot}\nHora: {timestamp}\nRuta: {flowPath}",
+        "nextStep": "END"
+      },
+
+      "aiQuery": {
+        "type": "ai",
+        "inputPrompt": "Contame tu consulta:",
+        "textOnlyMessage": "Por favor escribí tu consulta con texto.",
+        "useKnowledge": true,
+        "fallbackToEscalation": true,
+        "noResultMessage": "No encontré información. Voy a notificar a {developerName}.",
+        "noResultNotification": "❓ Consulta sin respuesta\nCliente: {matchedClient.name}\nConsulta: {userQuery}",
+        "continuePrompt": "¿Algo más en lo que pueda ayudarte?",
+        "nextStep": "END"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Legacy Flows
+
+The original flow system is still fully supported. Good for simple, straightforward use cases.
+
+### Guided flow — sequential Q&A
+
+Asks questions one by one, collects answers, then notifies the developer.
 
 ```json
 "flows": {
   "reportError": {
     "type": "guided",
     "steps": [
-      {
-        "key": "description",
-        "prompt": "Contame qué está pasando. ¿Qué estabas haciendo cuando ocurrió?"
-      },
-      {
-        "key": "screenshot",
-        "prompt": "¿Podés enviarme una captura de pantalla? Si no tenés, escribí *no tengo*."
-      }
+      { "key": "description", "prompt": "Describí el error:" },
+      { "key": "screenshot", "prompt": "¿Captura de pantalla?" }
     ],
     "noMediaFallback": "No adjuntó captura",
-    "confirmationMessage": "Registré el reporte. Voy a notificar a *{developerName}* a la brevedad. 🙏",
-    "developerNotification": "🐛 *Nuevo error*\n\n*Cliente:* {clientName} ({clientPhone})\n*Descripción:* {description}\n*Captura:* {screenshot}"
+    "confirmationMessage": "Reporte registrado. Gracias! 🙏",
+    "developerNotification": "🐛 Error de {clientName} ({clientPhone})\n{description}\n{screenshot}"
   }
 }
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `type` | Siempre `"guided"` |
-| `steps` | Array de pasos. Cada paso tiene `key` (nombre interno) y `prompt` (mensaje al usuario) |
-| `noMediaFallback` | Texto usado cuando un paso espera media pero el usuario no envía nada |
-| `confirmationMessage` | Mensaje al cliente cuando todos los pasos se completan. Soporta `{developerName}` y cualquier `key` de los steps |
-| `developerNotification` | Mensaje al desarrollador. Soporta `{clientName}`, `{clientPhone}`, `{developerName}` y cualquier `key` de los steps como `{description}`, `{screenshot}` |
-
-Podés agregar tantos pasos como necesites:
-
-```json
-"onboarding": {
-  "type": "guided",
-  "steps": [
-    { "key": "empresa", "prompt": "¿En qué empresa trabajás?" },
-    { "key": "rol",     "prompt": "¿Cuál es tu rol?" },
-    { "key": "sistema", "prompt": "¿Qué sistema estás usando?" }
-  ],
-  "confirmationMessage": "¡Gracias! Registré tus datos.",
-  "developerNotification": "🆕 Nuevo usuario: {empresa} — {rol} — {sistema}"
-}
-```
-
----
-
-### flows — Flujos de IA
-
-Un flujo de IA le pasa el control a la inteligencia artificial. Puede responder usando la base de conocimiento (RAG) o libremente.
+### AI flow — single AI-powered response
 
 ```json
 "flows": {
   "queryKnowledge": {
     "type": "ai",
-    "inputPrompt": "Contame tu consulta y voy a buscar la información:",
+    "inputPrompt": "Contame tu consulta:",
     "textOnlyMessage": "Por favor escribí tu consulta con texto.",
     "useKnowledge": true,
-    "ragContextInstruction": "Respondé de forma natural y conversacional.",
     "fallbackToEscalation": true,
-    "noResultMessage": "No encontré información sobre eso. Voy a notificar a *{developerName}*.",
-    "noResultDeveloperNotification": "❓ Consulta sin respuesta\n*Cliente:* {clientName}\n*Consulta:* {query}",
-    "continuePrompt": "¿Algo más? Respondé *menú* para ver las opciones."
+    "noResultMessage": "No encontré información. Notifico a {developerName}.",
+    "noResultDeveloperNotification": "❓ Sin respuesta: {query} — {clientPhone}",
+    "continuePrompt": "¿Algo más?"
   }
-}
-```
-
-| Campo | Descripción |
-|-------|-------------|
-| `type` | Siempre `"ai"` |
-| `inputPrompt` | Mensaje que le pide al usuario que escriba su consulta |
-| `textOnlyMessage` | Se envía si el usuario manda imagen o audio cuando se espera texto |
-| `useKnowledge` | `true` para buscar en la base de conocimiento antes de responder. `false` para respuesta libre |
-| `systemPromptOverride` | (Opcional) Reemplaza el system prompt global solo para este flow. Soporta `{company}`, `{botName}`, `{developerName}`, `{tone}` |
-| `ragContextInstruction` | Instrucción adicional al prompt cuando se encontró conocimiento |
-| `fallbackToEscalation` | `true`: si no hay conocimiento, escala al dev. `false`: la IA responde igual sin contexto |
-| `noResultMessage` | Mensaje al cliente cuando no hay conocimiento y se escala. Soporta `{developerName}` |
-| `noResultDeveloperNotification` | Notificación al dev. Soporta `{clientName}`, `{clientPhone}`, `{query}` |
-| `continuePrompt` | Mensaje enviado al cliente después de una respuesta exitosa |
-
-**Ejemplo — IA libre sin base de conocimiento:**
-
-```json
-"ventas": {
-  "type": "ai",
-  "inputPrompt": "¿Qué querés saber sobre nuestros servicios?",
-  "textOnlyMessage": "Por favor escribí tu consulta.",
-  "useKnowledge": false,
-  "systemPromptOverride": "Sos el asistente de ventas de {company}. Respondé sobre servicios y precios. Sé entusiasta y profesional.",
-  "continuePrompt": "¿Tenés alguna otra consulta?"
 }
 ```
 
 ---
 
-### ai
-
-Parámetros globales del proveedor de IA.
+## AI Settings
 
 ```json
 "ai": {
   "model": "gemini-2.0-flash",
-  "embeddingModel": "gemini-embedding-001",
-  "systemPrompt": "Sos {botName}, el asistente de soporte de {company}. Ayudá a los clientes con sus dudas. Usá español rioplatense.",
+  "embeddingModel": "text-embedding-004",
+  "systemPrompt": "Sos BugMate, asistente de soporte de {company}...",
   "ragMinScore": 0.72,
   "ragTopK": 3,
   "fallbackToEscalation": true,
@@ -351,21 +533,21 @@ Parámetros globales del proveedor de IA.
 }
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `model` | Modelo de chat. Gemini: `gemini-2.0-flash`, `gemini-1.5-pro`. Ollama: `qwen3:8b`, `llama3.2:3b`, etc. |
-| `embeddingModel` | Modelo para embeddings. Gemini: `gemini-embedding-001`. Ollama: `nomic-embed-text` |
-| `systemPrompt` | Prompt base del asistente. Soporta `{company}`, `{botName}`, `{developerName}`, `{tone}` |
-| `ragMinScore` | Score mínimo (0–1) para aceptar un resultado de búsqueda semántica. `0.72` es un buen valor |
-| `ragTopK` | Cuántos resultados de búsqueda vectorial considerar |
-| `fallbackToEscalation` | Default global cuando no se encuentra conocimiento. Se puede sobreescribir por flow |
-| `maxHistoryMessages` | Cuántos mensajes anteriores se guardan en sesión para contexto |
+| Field | Description |
+|---|---|
+| `model` | Chat model name (provider-specific) |
+| `embeddingModel` | Embedding model for vector search |
+| `systemPrompt` | Global system prompt. Supports `{company}`, `{developerName}`, `{botName}`, `{tone}` |
+| `ragMinScore` | Minimum cosine similarity score (0–1) to accept a knowledge result |
+| `ragTopK` | Number of top knowledge chunks to retrieve |
+| `fallbackToEscalation` | Global default: escalate when AI has no knowledge result |
+| `maxHistoryMessages` | Number of message pairs kept in conversation history for AI context |
 
 ---
 
-### humanDelay
+## humanDelay
 
-Simula que el bot es una persona real, con delay de lectura y tipeo visible en WhatsApp.
+Simulates realistic human typing behavior.
 
 ```json
 "humanDelay": {
@@ -378,290 +560,268 @@ Simula que el bot es una persona real, con delay de lectura y tipeo visible en W
 }
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `enabled` | `false` para deshabilitar todo delay (recomendado en desarrollo) |
-| `readingDelayMinMs` / `readingDelayMaxMs` | Rango aleatorio antes de empezar a "tipear" |
-| `msPerCharacter` | Milisegundos por caracter para calcular el tiempo de tipeo |
-| `minDelayMs` / `maxDelayMs` | Límites del tiempo de tipeo, sin importar el largo del mensaje |
+| Field | Description |
+|---|---|
+| `enabled` | Enable/disable all delays |
+| `readingDelayMinMs` / `readingDelayMaxMs` | Random delay before typing starts (simulates reading) |
+| `minDelayMs` / `maxDelayMs` | Clamp range for typing delay |
+| `msPerCharacter` | Typing speed — multiplied by response length |
 
 ---
 
-### media — Procesar imágenes y audio
+## media
 
 ```json
 "media": {
   "processImages": true,
   "processAudio": true,
-  "imagePrompt": "Analizá esta imagen. Si es una captura de pantalla, describí qué ves: errores, botones, formularios.",
-  "audioPrompt": "Transcribí exactamente el mensaje de audio en español.",
-  "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo. ¿Podés describirlo con texto?"
+  "imagePrompt": "Analizá esta imagen...",
+  "audioPrompt": "Transcribí exactamente el audio en español.",
+  "unsupportedMessage": "Recibí tu {mediaType}, pero no puedo procesarlo. ¿Podés describirlo?"
 }
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `processImages` | `true` para que la IA analice imágenes (requiere modelo con visión) |
-| `processAudio` | `true` para que la IA transcriba audios y notas de voz |
-| `imagePrompt` | Instrucción que se le da a la IA cuando recibe una imagen |
-| `audioPrompt` | Instrucción que se le da a la IA cuando recibe un audio |
-| `unsupportedMessage` | Respuesta para tipos no soportados (video, documento, sticker). `{mediaType}` se reemplaza con el tipo |
-
-> **Con Ollama:** El procesamiento de imágenes requiere un modelo multimodal como `llava`. `qwen3:8b` no soporta imágenes. Recomendamos `processImages: false` con Ollama salvo que uses `llava`.
+When `processImages: true`, images received by the bot are analyzed by the AI using `imagePrompt` and the description is used as the user's message. Same for audio with `audioPrompt`.
 
 ---
 
-### escalation
+## escalation
 
-Configura la escalación automática al desarrollador.
+Triggered when the user types a keyword from the list, or when a flow step uses `action: "ESCALATE"`.
 
 ```json
 "escalation": {
-  "keywords": [
-    "hablar con alguien",
-    "soporte humano",
-    "quiero hablar con una persona",
-    "hablar con ignacio"
-  ],
-  "clientMessage": "Entendido. Voy a notificar a *{developerName}* para que se comunique con vos. 🙏",
-  "developerNotification": "🔔 *Solicitud de soporte*\n\n*Cliente:* {clientName} ({clientPhone})\n*Mensaje:* \"{message}\"",
-  "alreadyEscalatedMessage": "Tu consulta ya fue enviada a *{developerName}*. En cuanto pueda se va a comunicar con vos. 🙏"
+  "keywords": ["hablar con alguien", "soporte humano", "quiero hablar con una persona"],
+  "clientMessage": "Voy a notificar a *{developerName}* para que te contacte. 🙏",
+  "developerNotification": "🔔 Solicitud de soporte\n{clientName} ({clientPhone})\n\"{message}\"",
+  "alreadyEscalatedMessage": "Tu consulta ya fue enviada a {developerName}. 🙏"
 }
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `keywords` | Si el usuario escribe cualquiera de estas frases en cualquier momento, se escala automáticamente |
-| `clientMessage` | Lo que le dice el bot al cliente al escalar. Soporta `{developerName}` |
-| `developerNotification` | Mensaje enviado al desarrollador. Soporta `{clientName}`, `{clientPhone}`, `{message}` |
-| `alreadyEscalatedMessage` | Respuesta si el cliente escribe después de ya haber escalado |
+After escalation the bot stops responding to the user (state: `ESCALATED`). Use `!reactivar <phone>` from the control group to re-enable it.
 
 ---
 
-## Clientes (clients.json)
+## Clients
 
-Define tus clientes para que el bot los reconozca por número y los salude por nombre.
+`config/clients.json` — array of known clients used for validation and knowledge filtering:
 
 ```json
 [
   {
     "phone": "5491123456789",
     "name": "María García",
-    "company": "Empresa Ejemplo S.A.",
-    "systems": ["Sistema de Facturación", "Portal de Reportes"],
+    "company": "Empresa S.A.",
+    "systems": ["Sistema de Facturación"],
+    "knowledgeDocs": ["medilab-knowledge.md"],
     "notes": "Usuaria principal del módulo de facturación"
-  },
-  {
-    "phone": "5491187654321",
-    "name": "Carlos López",
-    "company": "Distribuidora Norte",
-    "systems": ["Sistema de Stock"]
   }
 ]
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `phone` | Número en formato internacional, solo dígitos. Argentina: `549` + número sin 0 ni 15 |
-| `name` | Nombre del cliente, usado en el saludo y en notificaciones al desarrollador |
-| `company` | Empresa del cliente |
-| `systems` | Lista de sistemas que usa (informativo) |
-| `notes` | Notas internas, no se envían al cliente |
+| Field | Description |
+|---|---|
+| `phone` | Phone in international format (digits only, no +) |
+| `name` | Client's name — used in `{clientName}` and `{matchedClient.name}` |
+| `company` | Company name — used in `{matchedClient.company}` and for fuzzy validation |
+| `systems` | List of systems this client uses (informational) |
+| `knowledgeDocs` | Knowledge doc filenames this client can query (see below) |
+| `notes` | Internal notes (not shown to users) |
 
-Si un número no está registrado, el bot usa el valor de `greeting.unknownClientName` como nombre.
-
-> **Formato Argentina:** el número `011 1234-5678` se escribe como `5491112345678` (549 + 11 + número sin el 15).
+The `validate` step matches against `name` and `company` using fuzzy matching (case-insensitive, strips S.A./S.R.L. etc), and also matches by exact phone number.
 
 ---
 
-## Base de conocimiento
+## Knowledge Base
 
-El sistema de conocimiento tiene dos capas que se consultan en orden:
+### FAQ
 
-### FAQs estructuradas (knowledge.json)
-
-Ideal para preguntas frecuentes con respuesta fija. La búsqueda es por keywords, sin costo de IA ni embeddings.
+`config/knowledge.json` — instant keyword-based answers (no AI cost):
 
 ```json
 [
   {
-    "id": "backup",
-    "tags": ["backup", "copia de seguridad", "respaldo", "recuperar datos"],
-    "question": "¿Cómo hago un backup?",
-    "answer": "El sistema realiza backups automáticos diariamente a las 2 AM.",
+    "id": "reset-password",
+    "question": "¿Cómo reseteo mi contraseña?",
+    "tags": ["contraseña", "password", "resetear", "olvidé"],
+    "answer": "Para resetear tu contraseña, seguí estos pasos:",
     "steps": [
-      "Ir a Configuración → Backups",
-      "Hacer clic en 'Backup manual'",
-      "Esperar confirmación"
+      "Ir a la pantalla de login",
+      "Hacer click en 'Olvidé mi contraseña'",
+      "Ingresar tu email y seguir las instrucciones"
     ]
   }
 ]
 ```
 
-| Campo | Descripción |
-|-------|-------------|
-| `id` | Identificador único |
-| `tags` | Palabras o frases clave. Si el usuario escribe alguna, se activa esta entrada |
-| `question` | Pregunta de referencia (también usada para matching) |
-| `answer` | Respuesta que se le pasa a la IA como contexto |
-| `steps` | (Opcional) Pasos que se agregan a la respuesta |
+FAQ matching checks if the user's query contains any `tag` or the first 20 characters of `question`. Returns score 1.0 — no embedding needed.
 
----
+### Documents
 
-### Documentos de conocimiento (knowledge-docs/)
+Place `.md` or `.txt` files in `config/knowledge-docs/`. They are automatically indexed at startup:
 
-Para documentación más extensa. Colocá archivos `.md` o `.txt` en `config/knowledge-docs/`. Se indexan automáticamente en una base vectorial (SQLite) al arrancar.
+1. Text is split into chunks (~500 words each)
+2. Each chunk is embedded via the configured `embeddingModel`
+3. Vectors are stored in `data/knowledge.sqlite`
+4. On queries, cosine similarity is computed against stored chunks
 
+**Tips for best results:**
+- Use blank lines between topics — the chunker splits on line breaks
+- Prefer descriptive headings over generic ones ("Cómo crear una orden" vs "Sección 3")
+- Avoid complex tables — convert to prose
+- If you update a doc, delete `data/knowledge.sqlite` and restart to re-index
+
+**To convert a Word document:** Save as plain text (`.txt`) or copy-paste content into a `.md` file in `knowledge-docs/`.
+
+### Per-client knowledge filtering
+
+Each client can be restricted to only query their own documentation via the `knowledgeDocs` field in `clients.json`:
+
+```json
+{
+  "name": "Ignacio Becher",
+  "company": "Cima Tecno",
+  "knowledgeDocs": ["cima-knowledge.md"]
+}
 ```
-config/
-  knowledge-docs/
-    sistema-facturacion.md
-    guia-de-uso.md
-    preguntas-frecuentes.md
+
+**Behavior:**
+- Client has `knowledgeDocs` with files → only searches those files
+- Client has `knowledgeDocs: []` (empty) → no search, escalates to developer
+- Client has no `knowledgeDocs` field → no search, escalates to developer
+
+This ensures clients cannot access documentation from other companies' systems.
+
+To add knowledge for a new client:
+1. Create `config/knowledge-docs/cima-knowledge.md`
+2. Add `"knowledgeDocs": ["cima-knowledge.md"]` to that client in `clients.json`
+3. Delete `data/knowledge.sqlite` and restart to re-index
+
+---
+
+## Control Group Commands
+
+Create a WhatsApp group, add the bot's number, and set `CONTROL_GROUP_ID` in `.env`. Then send these commands from the group:
+
+| Command | Description |
+|---|---|
+| `!ayuda` | List all available commands |
+| `!estado` | Bot status: uptime, AI provider, active sessions, paused senders |
+| `!sesiones` | List all active sessions with their current state and step |
+| `!flujos` | List all configured flows (conditional and legacy) with their steps |
+| `!pausar <phone>` | Pause the bot for a specific phone number |
+| `!reactivar <phone>` | Resume the bot for a specific phone number |
+| `!grupos` | List all WhatsApp groups the bot is in (with their IDs) |
+
+**Finding your group ID:** Send `!grupos` from any group the bot is in — it will reply with all group names and IDs.
+
+---
+
+## Human Takeover
+
+When you reply manually to a client from the bot's WhatsApp number:
+
+1. The bot **automatically pauses** for that conversation
+2. A notification is sent to the control group (if configured): `⏸️ Bot pausado para 549XXXXXX`
+3. To re-enable: send `!reactivar 549XXXXXX` from the control group
+
+The bot stays paused even if the client sends more messages — it only resumes when you run `!reactivar`.
+
+---
+
+## Designing Your Own Bot
+
+BugMate is fully configurable — you can deploy completely different bots just by editing the JSON files, with zero code changes.
+
+### Minimal bot — greet only
+
+Set `options: []` in the menu. The bot will greet every new user and wait. You handle conversations manually via human takeover.
+
+```json
+"menu": {
+  "message": "",
+  "invalidChoiceMessage": "",
+  "unrecognizedOptionMessage": "",
+  "options": []
+}
 ```
 
-El contenido se divide en chunks y se busca semánticamente. Los parámetros `ragMinScore` y `ragTopK` controlan la sensibilidad.
+### Simple report bot — no validation
 
-> **Cambio de proveedor:** Si cambiás de Gemini a Ollama o viceversa, los embeddings no son compatibles. Borrá `data/knowledge.sqlite` y reiniciá para reindexar.
+```json
+"conditionalFlows": {
+  "simpleReport": {
+    "startStep": "ask",
+    "steps": {
+      "ask": {
+        "type": "input",
+        "prompt": "Describí tu problema:",
+        "saveAs": "problem",
+        "nextStep": "done"
+      },
+      "done": {
+        "type": "message",
+        "text": "Recibido. Te contactamos pronto!",
+        "action": "NOTIFY_DEVELOPER",
+        "notification": "📩 Nuevo reporte\nTeléfono: {senderPhone}\nProblema: {problem}\nHora: {timestamp}",
+        "nextStep": "END"
+      }
+    }
+  }
+}
+```
+
+### Direct AI chat — no knowledge base
+
+```json
+"conditionalFlows": {
+  "directAI": {
+    "startStep": "chat",
+    "steps": {
+      "chat": {
+        "type": "ai",
+        "inputPrompt": "¿En qué puedo ayudarte?",
+        "textOnlyMessage": "Por favor escribí tu consulta.",
+        "useKnowledge": false,
+        "continuePrompt": "¿Algo más?",
+        "nextStep": "END"
+      }
+    }
+  }
+}
+```
+
+### Full client support — validation + sub-menu + AI + knowledge filtering
+
+See the full example in the [Conditional Flow DSL](#full-example) section.
 
 ---
 
-## Grupo de control (toma de conversación humana)
-
-Permite pausar el bot y tomar el control de conversaciones directamente desde WhatsApp, sin que el cliente note nada.
-
-### Setup
-
-1. Creá un grupo en WhatsApp (puede ser solo vos)
-2. Agregá el número del bot al grupo
-3. Enviá `!grupos` desde el grupo — el bot responde con todos sus grupos e IDs
-4. Copiá el ID y pegalo en `.env`:
-   ```env
-   CONTROL_GROUP_ID=120363XXXXXXXXXX@g.us
-   ```
-5. Reiniciá el servidor
-
-### Pausa automática
-
-Cuando enviás un mensaje **manualmente** desde tu teléfono a un cliente, el bot se pausa automáticamente para ese número y te avisa en el grupo de control:
-
-> ⏸️ Bot pausado para **5491112345678** — tomaste el control de la conversación.
-> Usá `!reactivar 5491112345678` cuando termines.
-
-### Comandos
-
-Enviados desde el grupo de control:
-
-| Comando | Descripción |
-|---------|-------------|
-| `!grupos` | Lista todos los grupos donde está el bot con sus IDs |
-| `!estado` | Muestra qué números tienen el bot pausado actualmente |
-| `!pausar <número>` | Pausa el bot para ese número antes de escribirle |
-| `!reactivar <número>` | Reactiva el bot para ese número |
-
-Ejemplo: `!reactivar 5491112345678` (sin `@c.us`, sin `+`, sin espacios).
-
----
-
-## Estructura de archivos
+## File Structure
 
 ```
 bug-mate/
 ├── config/
-│   ├── bot.config.json        # Toda la lógica conversacional
-│   ├── clients.json           # Clientes registrados
-│   ├── knowledge.json         # FAQs estructuradas (búsqueda por keywords)
-│   └── knowledge-docs/        # Documentos para búsqueda semántica (.md, .txt)
+│   ├── bot.config.json          # Main bot configuration (behavior, flows, messages)
+│   ├── clients.json             # Known clients + their allowed knowledge docs
+│   ├── knowledge.json           # FAQ entries (instant keyword matching)
+│   └── knowledge-docs/          # Documents for vector search (one per system)
+│       ├── medilab-knowledge.md
+│       └── cima-knowledge.md
 ├── data/
-│   └── knowledge.sqlite       # Base vectorial (generada automáticamente)
+│   └── knowledge.sqlite         # Auto-generated vector database (delete to re-index)
 ├── src/
 │   └── modules/
-│       ├── ai/                # Proveedores de IA (Gemini, Ollama)
-│       ├── bot/               # Lógica principal y máquina de estados
-│       ├── config/            # Carga de .env y archivos JSON
-│       ├── knowledge/         # Búsqueda FAQ + vectorial
-│       ├── messaging/         # Adaptador WhatsApp
-│       └── session/           # Sesiones de conversación (en memoria)
-├── .env                       # Secrets (no commitear)
-├── .env.example               # Template de configuración
-└── .wwebjs_auth/              # Sesión de WhatsApp (generada automáticamente)
-```
-
----
-
-## Ejemplos completos de flujos
-
-### Soporte técnico con IA y base de conocimiento
-
-```json
-"soporte": {
-  "type": "ai",
-  "inputPrompt": "Describí tu consulta técnica:",
-  "textOnlyMessage": "Por favor escribí tu consulta con texto.",
-  "useKnowledge": true,
-  "ragContextInstruction": "Respondé con precisión técnica, paso a paso si es necesario.",
-  "fallbackToEscalation": true,
-  "noResultMessage": "No tengo información específica sobre eso. Te conecto con *{developerName}*.",
-  "noResultDeveloperNotification": "🔧 Consulta técnica sin respuesta\n*Cliente:* {clientName}\n*Consulta:* {query}",
-  "continuePrompt": "¿Resolvió tu duda? Si necesitás algo más, escribí *menú*."
-}
-```
-
-### Asistente de ventas libre
-
-```json
-"ventas": {
-  "type": "ai",
-  "inputPrompt": "¡Hola! ¿Qué querés saber sobre nuestros servicios?",
-  "textOnlyMessage": "Por favor escribí tu consulta.",
-  "useKnowledge": false,
-  "systemPromptOverride": "Sos el asistente de ventas de {company}. Respondé sobre servicios, precios y propuestas. Sé entusiasta y profesional. Si no tenés el dato exacto, ofrecé coordinar una reunión.",
-  "continuePrompt": "¿Tenés alguna otra consulta sobre nuestros servicios?"
-}
-```
-
-### Formulario de nueva funcionalidad
-
-```json
-"nuevaFuncionalidad": {
-  "type": "guided",
-  "steps": [
-    { "key": "funcionalidad", "prompt": "¿Qué funcionalidad necesitás? Describila con el mayor detalle posible." },
-    { "key": "motivo",        "prompt": "¿Para qué la necesitás? ¿Qué problema resolvería?" },
-    { "key": "urgencia",      "prompt": "¿Con qué urgencia la necesitás? (baja / media / alta)" }
-  ],
-  "confirmationMessage": "Registré tu solicitud. *{developerName}* la va a revisar y te contactará pronto. 🙌",
-  "developerNotification": "💡 *Nueva funcionalidad solicitada*\n\n*Cliente:* {clientName} ({clientPhone})\n*Funcionalidad:* {funcionalidad}\n*Motivo:* {motivo}\n*Urgencia:* {urgencia}"
-}
-```
-
-### Encuesta de satisfacción
-
-```json
-"encuesta": {
-  "type": "guided",
-  "steps": [
-    { "key": "puntuacion", "prompt": "Del 1 al 10, ¿cómo calificarías el soporte que recibiste?" },
-    { "key": "comentario",  "prompt": "¿Tenés algún comentario o sugerencia? (Podés escribir *no* si no tenés)" }
-  ],
-  "confirmationMessage": "¡Gracias por tu feedback! Tu opinión nos ayuda a mejorar. 🙏",
-  "developerNotification": "⭐ *Encuesta de satisfacción*\n\n*Cliente:* {clientName}\n*Puntuación:* {puntuacion}/10\n*Comentario:* {comentario}"
-}
-```
-
-### Reporte de error con sistema afectado
-
-```json
-"reporteAvanzado": {
-  "type": "guided",
-  "steps": [
-    { "key": "sistema",      "prompt": "¿Qué módulo o sección del sistema tuvo el problema?" },
-    { "key": "descripcion",  "prompt": "Describí el error detalladamente. ¿Qué estabas haciendo?" },
-    { "key": "reproducible", "prompt": "¿El error ocurre siempre o fue una sola vez?" },
-    { "key": "captura",      "prompt": "¿Podés enviarme una captura de pantalla? Si no tenés, escribí *no tengo*." }
-  ],
-  "noMediaFallback": "Sin captura",
-  "confirmationMessage": "Registré el reporte completo. *{developerName}* lo va a revisar a la brevedad. 🙏",
-  "developerNotification": "🐛 *Reporte detallado*\n\n*Cliente:* {clientName} ({clientPhone})\n*Módulo:* {sistema}\n*Descripción:* {descripcion}\n*¿Reproducible?:* {reproducible}\n*Captura:* {captura}"
-}
+│       ├── ai/                  # Gemini & Ollama providers
+│       ├── bot/
+│       │   ├── bot.service.ts              # Main message router
+│       │   ├── conditional-flow.service.ts # Conditional flow interpreter
+│       │   └── validate.service.ts         # Client data source validation
+│       ├── config/              # Config loading, types, interpolation
+│       ├── knowledge/           # Vector search & FAQ engine
+│       ├── messaging/           # WhatsApp adapter & control group commands
+│       └── session/             # In-memory session management
+├── .env                         # Your environment variables (not committed)
+├── .env.example                 # Template
+└── README.md
 ```

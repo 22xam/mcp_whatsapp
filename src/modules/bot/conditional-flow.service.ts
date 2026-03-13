@@ -322,7 +322,17 @@ export class ConditionalFlowService {
 
     let knowledgeResult: { content: string } | null = null;
     if (step.useKnowledge) {
-      knowledgeResult = await this.knowledgeService.search(query);
+      // Only search if the matched client has knowledge docs configured
+      const matchedClient = session.flowData['matchedClient'];
+      const allowedSources =
+        matchedClient && typeof matchedClient === 'object'
+          ? (matchedClient as Record<string, unknown>)['knowledgeDocs'] as string[] | undefined
+          : undefined;
+
+      if (allowedSources && allowedSources.length > 0) {
+        knowledgeResult = await this.knowledgeService.search(query, allowedSources);
+      }
+      // If no knowledgeDocs configured → treat as no result (falls through to escalation below)
     }
 
     if (knowledgeResult) {

@@ -135,6 +135,8 @@ export interface ClientConfig {
   company: string;
   systems: string[];
   notes?: string;
+  /** Knowledge doc filenames this client is allowed to query (e.g. ["cima-knowledge.md"]) */
+  knowledgeDocs?: string[];
 }
 
 export interface KnowledgeEntry {
