@@ -32,6 +32,7 @@ export interface FlowStep {
 
 export interface ReportErrorFlow {
   steps: FlowStep[];
+  noScreenshotFallback: string;
   confirmationMessage: string;
   developerNotification: string;
 }

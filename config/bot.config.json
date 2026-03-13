@@ -45,6 +45,7 @@
           "prompt": "¿Podés enviarme una captura de pantalla del error o una foto de la pantalla? Si no tenés, escribí *no tengo*."
         }
       ],
+      "noScreenshotFallback": "No adjuntó captura",
       "confirmationMessage": "Perfecto, registré el reporte. Voy a notificar a *{developerName}* para que lo revise a la brevedad. ¡Gracias por avisarnos! 🙏",
       "developerNotification": "🐛 *Nuevo reporte de error*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n📝 *Descripción:* {description}\n📎 *Captura:* {screenshot}"
     },

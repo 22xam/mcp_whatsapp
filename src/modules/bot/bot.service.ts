@@ -147,7 +147,7 @@ export class BotService {
     session: ConversationSession,
     adapter: MessageAdapter,
   ): Promise<void> {
-    const { steps, confirmationMessage, developerNotification } =
+    const { steps, noScreenshotFallback, confirmationMessage, developerNotification } =
       this.configLoader.botConfig.flows.reportError;
 
     const currentStep = steps[session.flowStep];
@@ -169,7 +169,7 @@ export class BotService {
       clientPhone: incoming.senderId.replace('@c.us', '').replace('@lid', ''),
       developerName: this.configLoader.botConfig.identity.developerName,
       description: session.flowData['description'] ?? '-',
-      screenshot: session.flowData['screenshot'] ?? 'No adjuntó captura',
+      screenshot: session.flowData['screenshot'] ?? noScreenshotFallback,
     };
 
     await this.send(

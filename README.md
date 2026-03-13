@@ -1,297 +1,348 @@
-# 🤖 Bug-Mate
+<p align="center">
+  <img src="assets/bug-mate-logo.png" alt="Bug-Mate Logo" width="180" />
+</p>
 
-**Bug-Mate** is an open-source AI-powered WhatsApp support bot built for software factories. It automates technical support by answering questions, collecting bug reports, and escalating issues to a developer — all through WhatsApp.
+# Bug-Mate
 
-Built with [NestJS](https://nestjs.com/), [whatsapp-web.js](https://wwebjs.dev/), and Google's Gemini API.
+**Bug-Mate** es un bot de soporte técnico para WhatsApp, de código abierto, potenciado por IA. Está pensado para fábricas de software que quieren automatizar la atención al cliente: responder consultas, recolectar reportes de errores y escalar problemas a un desarrollador, todo desde WhatsApp.
 
----
+Construido con [NestJS](https://nestjs.com/), [whatsapp-web.js](https://wwebjs.dev/) y la API de Google Gemini.
 
-## Table of Contents
-
-- [Features](#features)
-- [How It Works](#how-it-works)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-  - [Environment Variables](#environment-variables)
-  - [Bot Behavior (bot.config.json)](#bot-behavior-botconfigjson)
-  - [Client Database (clients.json)](#client-database-clientsjson)
-  - [FAQ Knowledge Base (knowledge.json)](#faq-knowledge-base-knowledgejson)
-  - [Knowledge Documents](#knowledge-documents)
-- [Running the Bot](#running-the-bot)
-- [Docker Deployment](#docker-deployment)
-- [Architecture Overview](#architecture-overview)
-- [Extension Points](#extension-points)
-- [Contributing](#contributing)
-- [License](#license)
+> Todo el comportamiento del bot — mensajes, opciones del menú, flujos de conversación, prompts de IA, palabras clave de escalación — se configura desde archivos JSON y variables de entorno. No hace falta tocar el código.
 
 ---
 
-## Features
+## Tabla de contenidos
 
-- **WhatsApp Integration** — Fully functional WhatsApp client using QR code authentication
-- **AI-Powered Responses** — Uses Google Gemini to generate natural language answers
-- **Semantic Search (RAG)** — Indexes your documentation as vector embeddings in SQLite for context-aware responses
-- **Multi-Step Conversation Flows** — Stateful flows for bug reporting and knowledge querying
-- **Bug Reporting** — Collects error descriptions and screenshots, then notifies the developer via WhatsApp
-- **Smart Escalation** — Detects configurable keywords and routes the conversation to a human developer
-- **Session Management** — Per-user conversation state with automatic timeout and cleanup
-- **Client Personalization** — Greet clients by name by adding them to the client database
-- **Pluggable AI Providers** — Switch between Gemini (cloud) and Ollama (local/offline) with zero code changes
-- **Fully Configurable** — All bot behavior, prompts, menus, and flows are defined in JSON files — no code changes needed
+- [Características](#características)
+- [Cómo funciona](#cómo-funciona)
+- [Stack tecnológico](#stack-tecnológico)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Requisitos previos](#requisitos-previos)
+- [Instalación](#instalación)
+- [Configuración](#configuración)
+  - [Variables de entorno](#variables-de-entorno)
+  - [Comportamiento del bot (bot.config.json)](#comportamiento-del-bot-botconfigjson)
+  - [Base de clientes (clients.json)](#base-de-clientes-clientsjson)
+  - [Preguntas frecuentes (knowledge.json)](#preguntas-frecuentes-knowledgejson)
+  - [Documentos de conocimiento](#documentos-de-conocimiento)
+- [Ejecutar el bot](#ejecutar-el-bot)
+- [Despliegue con Docker](#despliegue-con-docker)
+- [Arquitectura](#arquitectura)
+- [Puntos de extensión](#puntos-de-extensión)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
 
 ---
 
-## How It Works
+## Características
 
-When a client sends a WhatsApp message, Bug-Mate:
+- **Integración con WhatsApp** — Cliente de WhatsApp completo con autenticación por QR code
+- **Respuestas con IA** — Usa Google Gemini para generar respuestas en lenguaje natural
+- **Búsqueda semántica (RAG)** — Indexa tu documentación como embeddings vectoriales en SQLite para respuestas contextuales
+- **Flujos de conversación con estado** — Flujos multi-paso para reportar errores y consultar la base de conocimiento
+- **Reporte de errores** — Recolecta descripción y captura de pantalla, y notifica al desarrollador por WhatsApp
+- **Escalación inteligente** — Detecta palabras clave configurables y deriva la conversación a un humano
+- **Gestión de sesiones** — Estado de conversación por usuario con timeout y limpieza automática
+- **Personalización por cliente** — Saluda a los clientes por nombre si están registrados en la base de datos
+- **Proveedores de IA intercambiables** — Cambiá entre Gemini (cloud) y Ollama (local/sin internet) sin tocar el código
+- **100% configurable** — Todos los mensajes, menús, flujos, prompts, palabras clave y parámetros de IA se definen en archivos de configuración
 
-1. Greets them by name (if registered in `clients.json`)
-2. Shows a main menu with options:
-   - 🐛 Report an error
-   - ❓ Ask a question
-   - 👨‍💻 Speak with a developer
-3. Depending on their choice:
-   - **Report Error** → Asks for a description and optional screenshot → Sends a structured report to the developer
-   - **Ask a Question** → Searches the FAQ and documentation → Generates an AI-powered contextual answer
-   - **Escalate** → Detects urgent keywords or the user's explicit request → Notifies the developer immediately
-4. Sessions expire after a configurable timeout (default: 30 minutes), resetting the conversation automatically
+---
+
+## Cómo funciona
+
+Cuando un cliente manda un mensaje de WhatsApp, Bug-Mate:
+
+1. Lo saluda por nombre (si está registrado en `clients.json`)
+2. Muestra un menú con opciones configurables:
+   - 🐛 Reportar un error
+   - ❓ Consultar una duda
+   - 👨‍💻 Hablar con el desarrollador
+3. Según la elección del cliente:
+   - **Reportar error** → Pide descripción y captura de pantalla → Envía el reporte al desarrollador
+   - **Consultar** → Busca en FAQ y documentación → Genera una respuesta con IA basada en tu contenido
+   - **Escalar** → Detecta keywords o solicitud explícita → Notifica al desarrollador con contexto
+4. Las sesiones se reinician automáticamente tras el timeout configurado (por defecto: 30 minutos)
 
 ```
-User sends message
-        │
-        ▼
-WhatsApp Adapter (whatsapp-web.js)
-        │
-        ▼
-Bot Service (conversation state machine)
-   ├── IDLE ──────────────────────► Greet + show menu
-   ├── AWAITING_MENU_SELECTION ───► Parse choice / detect escalation keywords
-   ├── FLOW_REPORT_ERROR ─────────► Collect description & screenshot ──► notify developer
-   ├── FLOW_QUERY_KNOWLEDGE ──────► Search knowledge base + generate AI answer
-   └── ESCALATED ─────────────────► Acknowledge + notify developer
+El cliente envía un mensaje
+           │
+           ▼
+  Adaptador de WhatsApp (whatsapp-web.js)
+           │
+           ▼
+  BotService (máquina de estados)
+     ├── IDLE ──────────────────────────► Saludo + menú
+     ├── AWAITING_MENU_SELECTION ───────► Parsear opción / detectar escalación
+     ├── FLOW_REPORT_ERROR ─────────────► Recolectar datos del error ──► notificar al dev
+     ├── FLOW_QUERY_KNOWLEDGE ──────────► Buscar en base de conocimiento + respuesta IA
+     └── ESCALATED ─────────────────────► Confirmar escalación + notificar al dev
 ```
 
 ---
 
-## Tech Stack
+## Stack tecnológico
 
-| Layer | Technology |
+| Capa | Tecnología |
 |---|---|
 | Framework | NestJS 11 (TypeScript) |
 | WhatsApp | whatsapp-web.js 1.34.6 |
-| AI / LLM | Google Gemini 2.0 Flash |
+| IA / LLM | Google Gemini 2.0 Flash |
 | Embeddings | Gemini Embedding 001 |
-| Local AI (optional) | Ollama (qwen3:8b or any compatible model) |
-| Database | SQLite via better-sqlite3 |
+| IA local (opcional) | Ollama (cualquier modelo compatible) |
+| Base de datos | SQLite via better-sqlite3 |
 | Runtime | Node.js 22 LTS |
-| Containerization | Docker + Docker Compose |
+| Contenedores | Docker + Docker Compose |
 
 ---
 
-## Project Structure
+## Estructura del proyecto
 
 ```
 bug-mate/
 ├── src/
-│   ├── main.ts                        # NestJS bootstrap
-│   ├── app.module.ts                  # Root module
+│   ├── main.ts                        # Bootstrap de NestJS
+│   ├── app.module.ts                  # Módulo raíz
 │   └── modules/
-│       ├── ai/                        # AI provider abstraction
+│       ├── ai/                        # Abstracción del proveedor de IA
 │       │   └── providers/
 │       │       ├── gemini.provider.ts # Google Gemini (cloud)
 │       │       └── ollama.provider.ts # Ollama (local/offline)
-│       ├── bot/                       # Core conversation logic
-│       │   └── bot.service.ts         # State machine & flows
-│       ├── config/                    # Config loading (env + JSON files)
-│       ├── core/                      # Interfaces & injection tokens
-│       ├── knowledge/                 # FAQ keyword match + vector search
-│       ├── messaging/                 # WhatsApp adapter (message I/O)
-│       └── session/                   # Per-user in-memory session state
+│       ├── bot/                       # Lógica central de conversación
+│       │   └── bot.service.ts         # Máquina de estados y flujos
+│       ├── config/                    # Carga de configuración (env + JSON)
+│       │   ├── bot-config.service.ts  # Variables de entorno (.env)
+│       │   ├── config-loader.service.ts # Archivos JSON de config
+│       │   └── types/
+│       │       └── bot-config.types.ts  # Interfaces TypeScript de la config
+│       ├── core/                      # Interfaces e injection tokens
+│       ├── knowledge/                 # Búsqueda FAQ + búsqueda vectorial semántica
+│       ├── messaging/                 # Adaptador de WhatsApp (I/O de mensajes)
+│       └── session/                   # Estado de sesión por usuario (en memoria)
 ├── config/
-│   ├── bot.config.json                # All bot behavior, prompts & flows
-│   ├── clients.json                   # Client phone/name/company database
-│   ├── knowledge.json                 # FAQ entries
-│   └── knowledge-docs/                # .md / .txt files for RAG (vector search)
-│       ├── preguntas-frecuentes.md    # Example: FAQ document
-│       └── sistema-general.md         # Example: system documentation
-├── data/                              # SQLite vector database (auto-created)
-├── .wwebjs_auth/                      # WhatsApp session cache (auto-created)
-├── .env.example                       # Environment variable template
+│   ├── bot.config.json                # Todo el comportamiento del bot
+│   ├── clients.json                   # Base de datos de clientes
+│   ├── knowledge.json                 # Preguntas frecuentes (FAQ)
+│   └── knowledge-docs/                # Archivos .md / .txt para RAG
+│       ├── preguntas-frecuentes.md    # Ejemplo: documentación FAQ
+│       └── sistema-general.md         # Ejemplo: documentación del sistema
+├── data/                              # Base de datos SQLite de vectores (auto-creada)
+├── .wwebjs_auth/                      # Sesión de WhatsApp (auto-creada)
+├── .env.example                       # Plantilla de variables de entorno
 ├── Dockerfile
 └── docker-compose.yml
 ```
 
 ---
 
-## Prerequisites
+## Requisitos previos
 
-- **Node.js 22+** — [Download here](https://nodejs.org/)
-- **npm** (included with Node.js)
-- **Google Gemini API Key** — [Get one for free at Google AI Studio](https://aistudio.google.com/app/apikey)
-- **A WhatsApp account** to run as the bot (a second/dedicated number is recommended)
+- **Node.js 22+** — [Descargá aquí](https://nodejs.org/)
+- **npm** (incluido con Node.js)
+- **Clave de API de Google Gemini** — [Obtené una gratis en Google AI Studio](https://aistudio.google.com/app/apikey)
+- **Una cuenta de WhatsApp** para usar como bot (se recomienda un número dedicado o secundario)
 
-> **Optional:** [Ollama](https://ollama.com/) if you want to run the AI fully locally without any cloud API key.
+> **Opcional:** [Ollama](https://ollama.com/) si querés correr la IA completamente local, sin API key ni internet.
 
 ---
 
-## Installation
+## Instalación
 
-### 1. Clone the repository
+### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/your-username/bug-mate.git
+git clone https://github.com/tu-usuario/bug-mate.git
 cd bug-mate
 ```
 
-### 2. Install dependencies
+### 2. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 3. Set up environment variables
+### 3. Configurar variables de entorno
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and fill in your values. At minimum you need:
+Abrí `.env` y completá los valores. Como mínimo necesitás:
 
 ```env
-GEMINI_API_KEY=your_google_gemini_api_key
-DEVELOPER_PHONE=5491123456789        # International format, digits only, no + or spaces
-DEVELOPER_NAME=John
+GEMINI_API_KEY=tu_clave_de_gemini
+DEVELOPER_PHONE=5491123456789        # Formato internacional, solo dígitos, sin + ni espacios
+DEVELOPER_NAME=Juan
 ```
 
-See [Environment Variables](#environment-variables) for the full list.
+Ver [Variables de entorno](#variables-de-entorno) para la lista completa.
 
-### 4. Configure the bot
+### 4. Configurar el bot
 
-Edit the files inside the `/config/` folder to customize the bot's behavior, clients, and knowledge base. See [Configuration](#configuration) for details.
+Editá los archivos dentro de la carpeta `/config/`. Ver [Configuración](#configuración) para los detalles de cada archivo.
 
-### 5. Start the bot
+### 5. Iniciar el bot
 
 ```bash
 npm run start
 ```
 
-### 6. Scan the QR code
+### 6. Escanear el código QR
 
-On first run, a QR code will appear in the terminal. Open WhatsApp on your phone:
+En el primer arranque, aparecerá un código QR en la terminal. Abrí WhatsApp en tu celular:
 
-**Settings → Linked Devices → Link a Device → Scan the QR code**
+**Ajustes → Dispositivos vinculados → Vincular un dispositivo → Escaneá el QR**
 
-The session is saved to `.wwebjs_auth/` automatically and reused on all subsequent runs, so you only need to do this once.
+La sesión se guarda en `.wwebjs_auth/` y se reutiliza en los próximos arranques. Solo necesitás escanear una vez.
 
 ---
 
-## Configuration
+## Configuración
 
-Bug-Mate is designed to be configured entirely through files — no code changes are needed for most use cases.
+Bug-Mate está diseñado para configurarse completamente desde archivos, sin modificar el código. Hay dos capas de configuración:
 
-### Environment Variables
+- **`.env`** — Secretos y configuración de infraestructura (API keys, números de teléfono, URLs)
+- **`config/*.json`** — Comportamiento del bot (mensajes, menús, flujos, prompts, FAQ, clientes)
 
-| Variable | Required | Default | Description |
+---
+
+### Variables de entorno
+
+| Variable | Requerida | Por defecto | Descripción |
 |---|---|---|---|
-| `GEMINI_API_KEY` | Yes* | — | Google Gemini API key from [AI Studio](https://aistudio.google.com/) |
-| `DEVELOPER_PHONE` | Yes | — | Developer's WhatsApp number (international format, digits only, e.g. `5491123456789`) |
-| `DEVELOPER_NAME` | No | `Developer` | Developer's display name used in notifications |
-| `BOT_NAME` | No | `Bug-Mate` | Bot's display name |
-| `BOT_SYSTEM_PROMPT` | No | — | Override the default AI system prompt |
-| `ESCALATION_KEYWORDS` | No | — | Comma-separated keywords that trigger escalation (e.g. `urgent,critical,broken`) |
-| `PORT` | No | `3000` | HTTP server port |
-| `OLLAMA_URL` | No | `http://localhost:11434` | Ollama server URL (if using local AI) |
-| `OLLAMA_MODEL` | No | `qwen3:8b` | Ollama model name |
-| `OLLAMA_AUTO_START` | No | `false` | Auto-spawn the Ollama process on startup |
+| `GEMINI_API_KEY` | Sí* | — | Clave de API de Google Gemini ([obtener en AI Studio](https://aistudio.google.com/)) |
+| `DEVELOPER_PHONE` | Sí | — | Número de WhatsApp del desarrollador (formato internacional, solo dígitos, ej: `5491123456789`) |
+| `DEVELOPER_NAME` | No | `Developer` | Nombre del desarrollador, usado en notificaciones |
+| `BOT_NAME` | No | `Bug-Mate` | Nombre del bot |
+| `BOT_SYSTEM_PROMPT` | No | — | Overridea el system prompt de IA definido en `bot.config.json` |
+| `ESCALATION_KEYWORDS` | No | — | Keywords separadas por coma que disparan escalación (ej: `urgente,roto,no funciona`) |
+| `PORT` | No | `3000` | Puerto del servidor HTTP |
+| `OLLAMA_URL` | No | `http://localhost:11434` | URL del servidor Ollama (si usás IA local) |
+| `OLLAMA_MODEL` | No | `qwen3:8b` | Nombre del modelo Ollama |
+| `OLLAMA_AUTO_START` | No | `false` | Inicia el proceso de Ollama automáticamente al arrancar |
 
-> \*Required when using Gemini (the default provider). Not required if you switch to Ollama.
+> \*Requerida si usás Gemini (proveedor por defecto). No es necesaria si cambiás a Ollama.
 
 ---
 
-### Bot Behavior (bot.config.json)
+### Comportamiento del bot (bot.config.json)
 
-`config/bot.config.json` is the main configuration file. It controls everything about how the bot behaves: identity, greeting messages, menu options, conversation flows, AI settings, and escalation rules.
+`config/bot.config.json` es el archivo de configuración principal. Controla absolutamente todo el comportamiento del bot: identidad, mensajes de bienvenida, opciones del menú, flujos de conversación, configuración de IA y reglas de escalación.
 
 ```jsonc
 {
   "identity": {
-    "botName": "Bug-Mate",
-    "company": "Acme Software",
-    "developer": {
-      "name": "John",
-      "phone": "5491123456789"
-    }
+    "name": "BugMate",
+    "company": "Mi Empresa",
+    "developerName": "Juan",
+    "tone": "amigable, empático, profesional y conciso"
   },
   "greeting": {
-    "welcomeMessage": "Hello {{clientName}}! I'm Bug-Mate, your support assistant. How can I help you today?",
+    "enabled": true,
+    "message": "¡Hola {clientName}! 👋 Soy *{botName}*, el asistente de *{company}*. ¿En qué te puedo ayudar?",
+    "unknownClientName": "👋",
     "sessionTimeoutMinutes": 30
   },
   "menu": {
+    "message": "Elegí una opción respondiendo con el número:",
+    "invalidChoiceMessage": "No entendí tu respuesta.",
+    "unrecognizedOptionMessage": "Opción no reconocida.",
     "options": [
-      { "key": "1", "label": "🐛 Report an error", "action": "FLOW_REPORT_ERROR" },
-      { "key": "2", "label": "❓ Ask a question",  "action": "FLOW_QUERY_KNOWLEDGE" },
-      { "key": "3", "label": "👨‍💻 Talk to a developer", "action": "ESCALATED" }
+      { "id": "1", "label": "🐛 Reportar un error",  "action": "REPORT_ERROR" },
+      { "id": "2", "label": "❓ Consultar una duda",  "action": "QUERY_KNOWLEDGE" },
+      { "id": "3", "label": "👨‍💻 Hablar con el dev",  "action": "ESCALATE" }
     ]
   },
+  "flows": {
+    "reportError": {
+      "steps": [
+        { "key": "description", "prompt": "Describí el error con el mayor detalle posible." },
+        { "key": "screenshot",  "prompt": "¿Podés mandar una captura? Si no tenés, escribí *no tengo*." }
+      ],
+      "confirmationMessage": "Registré el reporte. Voy a notificar a *{developerName}* a la brevedad. 🙏",
+      "developerNotification": "🐛 *Nuevo error*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n📝 {description}\n📎 {screenshot}"
+    },
+    "queryKnowledge": {
+      "inputPrompt": "Contame tu consulta y voy a buscar la información para ayudarte:",
+      "textOnlyMessage": "Por favor escribí tu consulta con texto.",
+      "noResultMessage": "No encontré información específica. Voy a notificar a *{developerName}*.",
+      "noResultDeveloperNotification": "❓ *Consulta sin respuesta*\n\n📱 {clientName} ({clientPhone})\n💬 \"{query}\"",
+      "ragContextInstruction": "Respondé de forma natural y conversacional.",
+      "continuePrompt": "¿Hay algo más en lo que pueda ayudarte? Respondé *menú* para ver las opciones.",
+      "resultPrefix": "Encontré esto que puede ayudarte:"
+    }
+  },
   "ai": {
-    "provider": "gemini",
     "model": "gemini-2.0-flash",
-    "systemPrompt": "You are a helpful technical support assistant for Acme Software..."
+    "embeddingModel": "gemini-embedding-001",
+    "systemPrompt": "Sos {botName}, el asistente de soporte de {company}. Respondé en español rioplatense.",
+    "ragMinScore": 0.72,
+    "ragTopK": 3,
+    "fallbackToEscalation": true,
+    "maxHistoryMessages": 10
+  },
+  "media": {
+    "processImages": true,
+    "processAudio": true,
+    "imagePrompt": "Analizá esta imagen en detalle. Si es una captura de un sistema, describí qué ves.",
+    "audioPrompt": "Transcribí exactamente el mensaje de audio en español.",
+    "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo. ¿Podés describirlo con texto?"
   },
   "escalation": {
-    "keywords": ["urgent", "critical", "broken", "emergency", "not working"]
+    "keywords": ["urgente", "roto", "no funciona", "hablar con alguien"],
+    "clientMessage": "Entendido. Voy a notificar a *{developerName}* para que se comunique con vos. 🙏",
+    "developerNotification": "🔔 *Solicitud de soporte humano*\n\n📱 {clientName} ({clientPhone})\n💬 \"{message}\"",
+    "alreadyEscalatedMessage": "Tu consulta ya fue enviada a *{developerName}*. En cuanto pueda se comunica con vos. 🙏"
   }
 }
 ```
 
-> **Tip:** Placeholders like `{{clientName}}` and `{{botName}}` are automatically replaced with real values at runtime.
+> **Placeholders disponibles:** `{clientName}`, `{clientPhone}`, `{botName}`, `{company}`, `{developerName}`, `{message}`, `{query}`, `{description}`, `{screenshot}`, `{mediaType}`. Son reemplazados automáticamente en tiempo de ejecución.
 
 ---
 
-### Client Database (clients.json)
+### Base de clientes (clients.json)
 
-Add your customers so the bot can greet them by name and know which systems they use:
+Agregá a tus clientes para que el bot los salude por nombre y sepa qué sistemas usan:
 
 ```json
 [
   {
     "phone": "5491123456789",
-    "name": "Alice",
-    "company": "Widgets Inc.",
-    "systems": ["billing-app", "inventory-manager"]
+    "name": "Alicia",
+    "company": "Widgets S.A.",
+    "systems": ["sistema-facturacion", "inventario"]
   },
   {
     "phone": "5499876543210",
-    "name": "Bob",
-    "company": "Bob's Bakery",
+    "name": "Roberto",
+    "company": "La Panadería de Roberto",
     "systems": ["pos-system"]
   }
 ]
 ```
 
-If a phone number isn't in this file, the bot still works — it just falls back to a generic greeting.
+Si el número no está en este archivo, el bot funciona igual pero usa el saludo genérico configurado en `greeting.unknownClientName`.
 
 ---
 
-### FAQ Knowledge Base (knowledge.json)
+### Preguntas frecuentes (knowledge.json)
 
-Add frequently asked questions. The bot will match these against user queries using keyword and tag matching:
+Agregá las preguntas frecuentes que el bot va a usar para responder consultas. La búsqueda usa tanto matching por palabras clave (tags) como búsqueda semántica:
 
 ```json
 [
   {
     "id": "faq-login",
-    "tags": ["login", "password", "access", "can't log in", "forgot password"],
-    "question": "How do I reset my password?",
-    "answer": "You can reset your password from the login screen. Click 'Forgot Password', enter your email, and follow the instructions sent to your inbox.",
+    "tags": ["login", "contraseña", "acceso", "no puedo entrar", "olvidé mi contraseña"],
+    "question": "¿Cómo reseteo mi contraseña?",
+    "answer": "Podés resetear tu contraseña desde la pantalla de login. Hacé click en 'Olvidé mi contraseña', ingresá tu email y seguí las instrucciones.",
     "steps": [
-      "Go to the login page",
-      "Click 'Forgot Password'",
-      "Enter your registered email address",
-      "Check your inbox and follow the reset link"
+      "Andá a la pantalla de login",
+      "Hacé click en 'Olvidé mi contraseña'",
+      "Ingresá tu email registrado",
+      "Revisá tu bandeja de entrada y seguí el link"
     ]
   }
 ]
@@ -299,36 +350,36 @@ Add frequently asked questions. The bot will match these against user queries us
 
 ---
 
-### Knowledge Documents
+### Documentos de conocimiento
 
-Drop any `.md` or `.txt` files into `config/knowledge-docs/`. They are automatically indexed into the SQLite vector database on startup and used as context for AI responses.
+Agregá cualquier archivo `.md` o `.txt` a la carpeta `config/knowledge-docs/`. Son indexados automáticamente en la base de datos SQLite de vectores al iniciar la aplicación y se usan como contexto (RAG) para las respuestas de IA.
 
-This is great for:
-- Product documentation
-- How-to guides and tutorials
-- Release notes and changelogs
-- Internal technical wikis
+Ejemplos de contenido útil:
+- Documentación del producto
+- Guías paso a paso
+- Notas de versión
+- Wikis internas
 
-**How it works:** When a user asks a question, the bot computes a semantic embedding of the query and finds the most relevant chunks from your documents using cosine similarity. The top matching chunks are injected as context into the AI prompt, so the bot answers based on **your actual documentation** rather than generic knowledge.
+**Cómo funciona:** Cuando el usuario hace una consulta, el bot calcula un embedding semántico de la pregunta y busca los fragmentos más relevantes de tus documentos por similitud coseno. Los mejores resultados se inyectan como contexto en el prompt de IA, así el bot responde basándose en **tu documentación real** y no solo en su conocimiento general.
 
 ---
 
-## Running the Bot
+## Ejecutar el bot
 
-### Development (hot reload)
+### Desarrollo (con hot reload)
 
 ```bash
 npm run start:dev
 ```
 
-### Production
+### Producción
 
 ```bash
 npm run build
 npm run start:prod
 ```
 
-### Debug mode
+### Modo debug
 
 ```bash
 npm run start:debug
@@ -337,48 +388,48 @@ npm run start:debug
 ### Tests
 
 ```bash
-npm run test          # Unit tests
-npm run test:watch    # Watch mode
-npm run test:cov      # Coverage report
-npm run test:e2e      # End-to-end tests
+npm run test          # Tests unitarios
+npm run test:watch    # Modo watch
+npm run test:cov      # Reporte de cobertura
+npm run test:e2e      # Tests end-to-end
 ```
 
-### Code quality
+### Calidad de código
 
 ```bash
-npm run lint          # ESLint with auto-fix
-npm run format        # Prettier formatting
+npm run lint          # ESLint con auto-fix
+npm run format        # Formato con Prettier
 ```
 
 ---
 
-## Docker Deployment
+## Despliegue con Docker
 
-The easiest way to run Bug-Mate in production is with Docker Compose. Everything (Node.js, Chromium for WhatsApp, and optionally Ollama) runs in containers.
+La forma más fácil de correr Bug-Mate en producción es con Docker Compose. Todo (Node.js, Chromium para WhatsApp y opcionalmente Ollama) corre en contenedores.
 
-### 1. Configure your `.env` file
+### 1. Configurar el archivo `.env`
 
-Make sure your `.env` is filled in with real values before building.
+Completá tu `.env` con los valores reales antes de buildear.
 
-### 2. Build and start
+### 2. Buildear e iniciar
 
 ```bash
 docker-compose up --build
 ```
 
-This starts two services:
-- **ollama** — local Ollama AI server (used if `OLLAMA_AUTO_START=true` or you switch the AI provider)
-- **bugmate** — the NestJS application
+Esto levanta dos servicios:
+- **ollama** — servidor de IA local (usado si `OLLAMA_AUTO_START=true` o si cambiás el proveedor de IA)
+- **bugmate** — la aplicación NestJS
 
-### 3. Scan the QR code on first run
+### 3. Escanear el QR en el primer arranque
 
 ```bash
 docker-compose logs -f bugmate
 ```
 
-Watch the logs for the QR code, then scan it with WhatsApp. The session is saved to `./wwebjs_auth/` (a mounted volume) so you only need to do this once.
+Mirá los logs hasta que aparezca el QR, escanealo con WhatsApp. La sesión se persiste en `./wwebjs_auth/` (volumen montado), así que solo necesitás hacerlo una vez.
 
-### Stop
+### Detener
 
 ```bash
 docker-compose down
@@ -386,80 +437,80 @@ docker-compose down
 
 ---
 
-## Architecture Overview
+## Arquitectura
 
-Bug-Mate uses a **modular NestJS architecture** with clean separation of concerns. Each module handles one responsibility and they communicate through NestJS's dependency injection system.
+Bug-Mate usa una **arquitectura modular de NestJS** con separación clara de responsabilidades. Cada módulo tiene una sola responsabilidad y se comunican mediante el sistema de inyección de dependencias.
 
 ```
 AppModule
-├── AppConfigModule    → Loads .env variables and JSON config files
-├── CoreModule         → Shared interfaces, injection tokens, Ollama process manager
-├── AiModule           → AI provider abstraction layer (Gemini / Ollama)
-├── SessionModule      → In-memory per-user conversation state with auto-cleanup
-├── KnowledgeModule    → Two-tier search: FAQ keyword matching + semantic vector search
-├── BotModule          → Conversation state machine, flow orchestration
-└── MessagingModule    → WhatsApp adapter (receives and sends messages)
+├── AppConfigModule    → Carga variables de .env y archivos JSON de config
+├── CoreModule         → Interfaces compartidas, tokens de inyección, manager de Ollama
+├── AiModule           → Capa de abstracción de proveedores de IA (Gemini / Ollama)
+├── SessionModule      → Estado de conversación por usuario en memoria, con auto-limpieza
+├── KnowledgeModule    → Búsqueda en dos niveles: keywords FAQ + búsqueda vectorial semántica
+├── BotModule          → Máquina de estados y orquestación de flujos de conversación
+└── MessagingModule    → Adaptador de WhatsApp (recibe y envía mensajes)
 ```
 
-### Conversation State Machine
+### Máquina de estados de conversación
 
-Each user session moves through these states:
+Cada sesión de usuario pasa por estos estados:
 
 ```
 IDLE
- └─(first message)──────────► AWAITING_MENU_SELECTION
-                                    ├─(option 1)──► FLOW_REPORT_ERROR ──► IDLE
-                                    ├─(option 2)──► FLOW_QUERY_KNOWLEDGE ──► IDLE
-                                    └─(option 3 or escalation keyword)──► ESCALATED
+ └─(primer mensaje)──────────────► AWAITING_MENU_SELECTION
+                                         ├─(opción 1)──► FLOW_REPORT_ERROR ──► IDLE
+                                         ├─(opción 2)──► FLOW_QUERY_KNOWLEDGE ──► IDLE
+                                         └─(opción 3 o keyword)──► ESCALATED
 ```
 
-Sessions auto-expire after the configured timeout. A background task cleans up stale sessions every 5 minutes.
+Las sesiones expiran automáticamente tras el timeout configurado. Una tarea en background limpia las sesiones viejas cada 5 minutos.
 
-### Vector Search (RAG)
+### Búsqueda vectorial (RAG)
 
-When a user asks a question, the knowledge service runs a two-tier search:
+Cuando el usuario hace una consulta, el servicio de conocimiento ejecuta una búsqueda en dos niveles:
 
-1. **Keyword/tag match** — fast and free, scans FAQ entries for matching tags and questions
-2. **Semantic vector search** — generates a Gemini embedding for the query, then computes cosine similarity against all stored document embeddings in SQLite
-3. Top-K results (default: 3) with a minimum similarity score (default: 0.72) are selected
-4. The matched content is injected into the Gemini prompt as context (RAG)
+1. **Matching por keywords/tags** — rápido y gratuito, busca en los tags y preguntas de la FAQ
+2. **Búsqueda semántica vectorial** — genera un embedding de Gemini para la consulta y calcula similitud coseno contra todos los documentos indexados en SQLite
+3. Se seleccionan los Top-K resultados (por defecto: 3) con un score mínimo configurable (por defecto: 0.72)
+4. El contenido encontrado se inyecta en el prompt de Gemini como contexto (RAG)
 
-This means the bot answers questions grounded in **your actual product documentation**.
+Así el bot responde consultas fundamentadas en **tu documentación real**, no solo en su conocimiento de entrenamiento.
 
 ---
 
-## Extension Points
+## Puntos de extensión
 
-Bug-Mate is built to be extended without modifying core logic:
+Bug-Mate está diseñado para extenderse sin modificar la lógica central:
 
-| What to extend | How |
+| Qué extender | Cómo |
 |---|---|
-| Add a new AI provider | Implement the `AIProvider` interface in `src/modules/ai/providers/` |
-| Add a new messaging platform | Implement the `MessageAdapter` interface in `src/modules/messaging/adapters/` |
-| Add a new conversation flow | Add a new state and handler in `BotService` |
-| Add knowledge content | Drop `.md` or `.txt` files in `config/knowledge-docs/` |
-| Add or update clients | Edit `config/clients.json` |
-| Customize all prompts and messages | Edit `config/bot.config.json` |
+| Agregar un nuevo proveedor de IA | Implementar la interfaz `AIProvider` en `src/modules/ai/providers/` |
+| Agregar una nueva plataforma de mensajería | Implementar la interfaz `MessageAdapter` en `src/modules/messaging/adapters/` |
+| Agregar un nuevo flujo de conversación | Agregar un nuevo estado y handler en `BotService` |
+| Agregar contenido de conocimiento | Dejar archivos `.md` o `.txt` en `config/knowledge-docs/` |
+| Agregar o actualizar clientes | Editar `config/clients.json` |
+| Personalizar todos los mensajes y prompts | Editar `config/bot.config.json` |
 
 ---
 
-## Contributing
+## Contribuir
 
-Contributions are welcome! Here's how to get started:
+¡Las contribuciones son bienvenidas! Así podés empezar:
 
-1. Fork this repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes and add tests if applicable
-4. Run `npm run test` and `npm run lint` to verify everything passes
-5. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m "feat: add my feature"`
-6. Push and open a Pull Request
-
----
-
-## License
-
-This project is open-source and available under the [MIT License](LICENSE).
+1. Forkear el repositorio
+2. Crear una rama: `git checkout -b feature/mi-feature`
+3. Hacer los cambios y agregar tests si aplica
+4. Correr `npm run test` y `npm run lint` para verificar que todo pasa
+5. Commitear usando [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m "feat: agregar mi feature"`
+6. Pushear y abrir un Pull Request
 
 ---
 
-> Built for software factories that want smarter, automated support — without leaving WhatsApp.
+## Licencia
+
+Este proyecto es de código abierto y está disponible bajo la [Licencia MIT](LICENSE).
+
+---
+
+> Hecho para fábricas de software que quieren soporte más inteligente sin salir de WhatsApp.
