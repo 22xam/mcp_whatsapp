@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import { join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
 import { ConfigLoaderService } from '../config/config-loader.service';
-import { GeminiProvider } from '../ai/providers/gemini.provider';
+import type { EmbeddingProvider } from '../core/interfaces/ai-provider.interface';
+import { EMBEDDING_PROVIDER } from '../core/tokens/injection-tokens';
 import type { KnowledgeEntry } from '../config/types/bot-config.types';
 
 interface VectorRow {
@@ -26,7 +27,7 @@ export class KnowledgeService implements OnModuleInit {
 
   constructor(
     private readonly configLoader: ConfigLoaderService,
-    private readonly gemini: GeminiProvider,
+    @Inject(EMBEDDING_PROVIDER) private readonly embeddingProvider: EmbeddingProvider,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -48,7 +49,7 @@ export class KnowledgeService implements OnModuleInit {
     if (faqResult) return faqResult;
 
     // 2. Semantic search via embeddings
-    const queryEmbedding = await this.gemini.embed(query);
+    const queryEmbedding = await this.embeddingProvider.embed(query);
     const results = this.vectorSearch(queryEmbedding, topK);
 
     const best = results[0];
@@ -133,7 +134,7 @@ export class KnowledgeService implements OnModuleInit {
     );
 
     for (const item of toIndex) {
-      const embedding = await this.gemini.embed(item.content);
+      const embedding = await this.embeddingProvider.embed(item.content);
       const blob = Buffer.from(new Float32Array(embedding).buffer);
       insert.run(item.id, item.content, item.source, blob);
     }

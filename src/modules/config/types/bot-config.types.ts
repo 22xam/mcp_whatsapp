@@ -15,7 +15,10 @@ export interface GreetingConfig {
 export interface MenuOption {
   id: string;
   label: string;
-  action: 'REPORT_ERROR' | 'QUERY_KNOWLEDGE' | 'ESCALATE' | string;
+  /** Built-in actions that don't require a flow definition */
+  action?: 'ESCALATE' | 'SHOW_MENU';
+  /** ID of a flow defined in the flows map — required when action is absent */
+  flowId?: string;
 }
 
 export interface MenuConfig {
@@ -25,32 +28,53 @@ export interface MenuConfig {
   options: MenuOption[];
 }
 
+// ─── Flow step (guided mode) ─────────────────────────────────────────────────
+
 export interface FlowStep {
   key: string;
   prompt: string;
 }
 
-export interface ReportErrorFlow {
+// ─── Guided flow ─────────────────────────────────────────────────────────────
+
+export interface GuidedFlow {
+  type: 'guided';
   steps: FlowStep[];
-  noScreenshotFallback: string;
+  /** Message sent to the client after all steps are collected */
   confirmationMessage: string;
+  /** WhatsApp message sent to the developer. Supports {clientName}, {clientPhone}, plus any step key as {key} */
   developerNotification: string;
+  /** Fallback text for optional media steps when no media is provided */
+  noMediaFallback?: string;
 }
 
-export interface QueryKnowledgeFlow {
+// ─── AI flow ─────────────────────────────────────────────────────────────────
+
+export interface AiFlow {
+  type: 'ai';
+  /** Prompt sent to the user asking for their query */
   inputPrompt: string;
+  /** Sent when user sends non-text content in an ai flow */
   textOnlyMessage: string;
-  noResultMessage: string;
-  noResultDeveloperNotification: string;
-  ragContextInstruction: string;
+  /** Override the global ai.systemPrompt for this flow. Supports {company}, {botName}, {developerName}, {tone} */
+  systemPromptOverride?: string;
+  /** Whether to use the knowledge base (RAG) for this flow */
+  useKnowledge: boolean;
+  /** Sent when knowledge search yields no result and fallbackToEscalation is true */
+  noResultMessage?: string;
+  /** Developer notification when knowledge search yields no result. Supports {clientName}, {clientPhone}, {query} */
+  noResultDeveloperNotification?: string;
+  /** Additional instruction appended to the system prompt when a knowledge result is found */
+  ragContextInstruction?: string;
+  /** Whether to escalate to the developer when no knowledge result is found */
+  fallbackToEscalation?: boolean;
+  /** Prompt sent after a successful AI response to invite further interaction */
   continuePrompt: string;
-  resultPrefix: string;
 }
 
-export interface FlowsConfig {
-  reportError: ReportErrorFlow;
-  queryKnowledge: QueryKnowledgeFlow;
-}
+export type FlowDefinition = GuidedFlow | AiFlow;
+
+// ─── Top-level config ─────────────────────────────────────────────────────────
 
 export interface AiConfig {
   model: string;
@@ -58,6 +82,7 @@ export interface AiConfig {
   systemPrompt: string;
   ragMinScore: number;
   ragTopK: number;
+  /** Global fallback: escalate when AI has no knowledge result (can be overridden per AiFlow) */
   fallbackToEscalation: boolean;
   maxHistoryMessages: number;
 }
@@ -90,7 +115,8 @@ export interface BotConfig {
   identity: BotIdentity;
   greeting: GreetingConfig;
   menu: MenuConfig;
-  flows: FlowsConfig;
+  /** Map of flowId → flow definition. Can be guided or ai. */
+  flows: Record<string, FlowDefinition>;
   humanDelay: HumanDelayConfig;
   ai: AiConfig;
   media: MediaConfig;

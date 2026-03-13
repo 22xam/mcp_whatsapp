@@ -4,5 +4,6 @@
  * implementation without coupling to a concrete class.
  */
 export const AI_PROVIDER = 'AI_PROVIDER';
+export const EMBEDDING_PROVIDER = 'EMBEDDING_PROVIDER';
 export const MESSAGE_ADAPTER = 'MESSAGE_ADAPTER';
 export const TICKET_PROVIDER = 'TICKET_PROVIDER';

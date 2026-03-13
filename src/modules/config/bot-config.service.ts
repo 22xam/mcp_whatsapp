@@ -37,4 +37,12 @@ export class BotConfigService {
     const phone = this.config.getOrThrow<string>('DEVELOPER_PHONE');
     return `${phone}@c.us`;
   }
+
+  get controlGroupId(): string | null {
+    return this.config.get<string>('CONTROL_GROUP_ID') ?? null;
+  }
+
+  get aiProvider(): 'gemini' | 'ollama' {
+    return this.config.get<'gemini' | 'ollama'>('AI_PROVIDER', 'gemini');
+  }
 }

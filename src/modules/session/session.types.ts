@@ -1,8 +1,7 @@
 export type ConversationState =
   | 'IDLE'
   | 'AWAITING_MENU_SELECTION'
-  | 'FLOW_REPORT_ERROR'
-  | 'FLOW_QUERY_KNOWLEDGE'
+  | 'FLOW_ACTIVE'
   | 'ESCALATED';
 
 export interface FlowData {
@@ -13,7 +12,9 @@ export interface ConversationSession {
   senderId: string;
   clientName: string;
   state: ConversationState;
-  /** Current step index within a multi-step flow */
+  /** ID of the active flow (matches a key in bot.config.json flows map) */
+  activeFlowId: string | null;
+  /** Current step index within a guided flow */
   flowStep: number;
   /** Data collected during a flow */
   flowData: FlowData;

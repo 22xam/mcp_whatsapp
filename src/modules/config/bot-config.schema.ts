@@ -16,7 +16,15 @@ export const botConfigSchema = Joi.object({
   OLLAMA_MODEL: Joi.string().default('qwen3:8b'),
   OLLAMA_AUTO_START: Joi.boolean().default(false),
 
+  // ── AI provider selection ────────────────────────────────────
+  AI_PROVIDER: Joi.string().valid('gemini', 'ollama').default('gemini'),
+
   // ── Developer contact (secrets, not in JSON) ─────────────────
   DEVELOPER_NAME: Joi.string().required(),
   DEVELOPER_PHONE: Joi.string().pattern(/^\d+$/, 'digits only').required(),
+
+  // ── Control group (optional) ─────────────────────────────────
+  // WhatsApp group ID used to send control commands to the bot.
+  // Format: <digits>@g.us  — obtain it by running the bot and sending !grupos from any group.
+  CONTROL_GROUP_ID: Joi.string().optional(),
 });

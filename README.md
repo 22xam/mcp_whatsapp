@@ -2,515 +2,666 @@
   <img src="assets/bug-mate-logo.png" alt="Bug-Mate Logo" width="180" />
 </p>
 
-# Bug-Mate
+# BugMate
 
-**Bug-Mate** es un bot de soporte técnico para WhatsApp, de código abierto, potenciado por IA. Está pensado para fábricas de software que quieren automatizar la atención al cliente: responder consultas, recolectar reportes de errores y escalar problemas a un desarrollador, todo desde WhatsApp.
-
-Construido con [NestJS](https://nestjs.com/), [whatsapp-web.js](https://wwebjs.dev/) y la API de Google Gemini.
-
-> Todo el comportamiento del bot — mensajes, opciones del menú, flujos de conversación, prompts de IA, palabras clave de escalación — se configura desde archivos JSON y variables de entorno. No hace falta tocar el código.
+Bot de atención al cliente para WhatsApp, diseñado para software factories. Permite configurar flujos guiados, respuestas automáticas por IA, base de conocimiento semántica y escalación a soporte humano — todo desde archivos JSON, sin tocar código.
 
 ---
 
-## Tabla de contenidos
+## Índice
 
-- [Características](#características)
-- [Cómo funciona](#cómo-funciona)
-- [Stack tecnológico](#stack-tecnológico)
-- [Estructura del proyecto](#estructura-del-proyecto)
-- [Requisitos previos](#requisitos-previos)
+- [Requisitos](#requisitos)
 - [Instalación](#instalación)
-- [Configuración](#configuración)
-  - [Variables de entorno](#variables-de-entorno)
-  - [Comportamiento del bot (bot.config.json)](#comportamiento-del-bot-botconfigjson)
-  - [Base de clientes (clients.json)](#base-de-clientes-clientsjson)
-  - [Preguntas frecuentes (knowledge.json)](#preguntas-frecuentes-knowledgejson)
-  - [Documentos de conocimiento](#documentos-de-conocimiento)
-- [Ejecutar el bot](#ejecutar-el-bot)
-- [Despliegue con Docker](#despliegue-con-docker)
-- [Arquitectura](#arquitectura)
-- [Puntos de extensión](#puntos-de-extensión)
-- [Contribuir](#contribuir)
-- [Licencia](#licencia)
+- [Configuración inicial (.env)](#configuración-inicial-env)
+- [Proveedor de IA](#proveedor-de-ia)
+  - [Gemini (Google)](#gemini-google)
+  - [Ollama (local / open source)](#ollama-local--open-source)
+- [Configuración del bot (bot.config.json)](#configuración-del-bot-botconfigjson)
+  - [identity](#identity)
+  - [greeting](#greeting)
+  - [menu](#menu)
+  - [flows — Flujos guiados](#flows--flujos-guiados)
+  - [flows — Flujos de IA](#flows--flujos-de-ia)
+  - [ai](#ai)
+  - [humanDelay](#humandelay)
+  - [media — Procesar imágenes y audio](#media--procesar-imágenes-y-audio)
+  - [escalation](#escalation)
+- [Clientes (clients.json)](#clientes-clientsjson)
+- [Base de conocimiento](#base-de-conocimiento)
+  - [FAQs estructuradas (knowledge.json)](#faqs-estructuradas-knowledgejson)
+  - [Documentos de conocimiento (knowledge-docs/)](#documentos-de-conocimiento-knowledge-docs)
+- [Grupo de control (toma de conversación humana)](#grupo-de-control-toma-de-conversación-humana)
+- [Estructura de archivos](#estructura-de-archivos)
+- [Ejemplos completos de flujos](#ejemplos-completos-de-flujos)
 
 ---
 
-## Características
+## Requisitos
 
-- **Integración con WhatsApp** — Cliente de WhatsApp completo con autenticación por QR code
-- **Respuestas con IA** — Usa Google Gemini para generar respuestas en lenguaje natural
-- **Búsqueda semántica (RAG)** — Indexa tu documentación como embeddings vectoriales en SQLite para respuestas contextuales
-- **Flujos de conversación con estado** — Flujos multi-paso para reportar errores y consultar la base de conocimiento
-- **Reporte de errores** — Recolecta descripción y captura de pantalla, y notifica al desarrollador por WhatsApp
-- **Escalación inteligente** — Detecta palabras clave configurables y deriva la conversación a un humano
-- **Gestión de sesiones** — Estado de conversación por usuario con timeout y limpieza automática
-- **Personalización por cliente** — Saluda a los clientes por nombre si están registrados en la base de datos
-- **Proveedores de IA intercambiables** — Cambiá entre Gemini (cloud) y Ollama (local/sin internet) sin tocar el código
-- **100% configurable** — Todos los mensajes, menús, flujos, prompts, palabras clave y parámetros de IA se definen en archivos de configuración
-
----
-
-## Cómo funciona
-
-Cuando un cliente manda un mensaje de WhatsApp, Bug-Mate:
-
-1. Lo saluda por nombre (si está registrado en `clients.json`)
-2. Muestra un menú con opciones configurables:
-   - 🐛 Reportar un error
-   - ❓ Consultar una duda
-   - 👨‍💻 Hablar con el desarrollador
-3. Según la elección del cliente:
-   - **Reportar error** → Pide descripción y captura de pantalla → Envía el reporte al desarrollador
-   - **Consultar** → Busca en FAQ y documentación → Genera una respuesta con IA basada en tu contenido
-   - **Escalar** → Detecta keywords o solicitud explícita → Notifica al desarrollador con contexto
-4. Las sesiones se reinician automáticamente tras el timeout configurado (por defecto: 30 minutos)
-
-```
-El cliente envía un mensaje
-           │
-           ▼
-  Adaptador de WhatsApp (whatsapp-web.js)
-           │
-           ▼
-  BotService (máquina de estados)
-     ├── IDLE ──────────────────────────► Saludo + menú
-     ├── AWAITING_MENU_SELECTION ───────► Parsear opción / detectar escalación
-     ├── FLOW_REPORT_ERROR ─────────────► Recolectar datos del error ──► notificar al dev
-     ├── FLOW_QUERY_KNOWLEDGE ──────────► Buscar en base de conocimiento + respuesta IA
-     └── ESCALATED ─────────────────────► Confirmar escalación + notificar al dev
-```
-
----
-
-## Stack tecnológico
-
-| Capa | Tecnología |
-|---|---|
-| Framework | NestJS 11 (TypeScript) |
-| WhatsApp | whatsapp-web.js 1.34.6 |
-| IA / LLM | Google Gemini 2.0 Flash |
-| Embeddings | Gemini Embedding 001 |
-| IA local (opcional) | Ollama (cualquier modelo compatible) |
-| Base de datos | SQLite via better-sqlite3 |
-| Runtime | Node.js 22 LTS |
-| Contenedores | Docker + Docker Compose |
-
----
-
-## Estructura del proyecto
-
-```
-bug-mate/
-├── src/
-│   ├── main.ts                        # Bootstrap de NestJS
-│   ├── app.module.ts                  # Módulo raíz
-│   └── modules/
-│       ├── ai/                        # Abstracción del proveedor de IA
-│       │   └── providers/
-│       │       ├── gemini.provider.ts # Google Gemini (cloud)
-│       │       └── ollama.provider.ts # Ollama (local/offline)
-│       ├── bot/                       # Lógica central de conversación
-│       │   └── bot.service.ts         # Máquina de estados y flujos
-│       ├── config/                    # Carga de configuración (env + JSON)
-│       │   ├── bot-config.service.ts  # Variables de entorno (.env)
-│       │   ├── config-loader.service.ts # Archivos JSON de config
-│       │   └── types/
-│       │       └── bot-config.types.ts  # Interfaces TypeScript de la config
-│       ├── core/                      # Interfaces e injection tokens
-│       ├── knowledge/                 # Búsqueda FAQ + búsqueda vectorial semántica
-│       ├── messaging/                 # Adaptador de WhatsApp (I/O de mensajes)
-│       └── session/                   # Estado de sesión por usuario (en memoria)
-├── config/
-│   ├── bot.config.json                # Todo el comportamiento del bot
-│   ├── clients.json                   # Base de datos de clientes
-│   ├── knowledge.json                 # Preguntas frecuentes (FAQ)
-│   └── knowledge-docs/                # Archivos .md / .txt para RAG
-│       ├── preguntas-frecuentes.md    # Ejemplo: documentación FAQ
-│       └── sistema-general.md         # Ejemplo: documentación del sistema
-├── data/                              # Base de datos SQLite de vectores (auto-creada)
-├── .wwebjs_auth/                      # Sesión de WhatsApp (auto-creada)
-├── .env.example                       # Plantilla de variables de entorno
-├── Dockerfile
-└── docker-compose.yml
-```
-
----
-
-## Requisitos previos
-
-- **Node.js 22+** — [Descargá aquí](https://nodejs.org/)
-- **npm** (incluido con Node.js)
-- **Clave de API de Google Gemini** — [Obtené una gratis en Google AI Studio](https://aistudio.google.com/app/apikey)
-- **Una cuenta de WhatsApp** para usar como bot (se recomienda un número dedicado o secundario)
-
-> **Opcional:** [Ollama](https://ollama.com/) si querés correr la IA completamente local, sin API key ni internet.
+- Node.js 18+
+- npm
+- Una cuenta de WhatsApp vinculada al bot (número dedicado recomendado)
+- Un proveedor de IA: **Gemini** (API key gratuita) o **Ollama** (local, open source)
 
 ---
 
 ## Instalación
 
-### 1. Clonar el repositorio
-
 ```bash
 git clone https://github.com/tu-usuario/bug-mate.git
 cd bug-mate
-```
-
-### 2. Instalar dependencias
-
-```bash
 npm install
-```
-
-### 3. Configurar variables de entorno
-
-```bash
 cp .env.example .env
 ```
 
-Abrí `.env` y completá los valores. Como mínimo necesitás:
-
-```env
-GEMINI_API_KEY=tu_clave_de_gemini
-DEVELOPER_PHONE=5491123456789        # Formato internacional, solo dígitos, sin + ni espacios
-DEVELOPER_NAME=Juan
-```
-
-Ver [Variables de entorno](#variables-de-entorno) para la lista completa.
-
-### 4. Configurar el bot
-
-Editá los archivos dentro de la carpeta `/config/`. Ver [Configuración](#configuración) para los detalles de cada archivo.
-
-### 5. Iniciar el bot
+Editá `.env` con tu configuración, luego:
 
 ```bash
 npm run start
 ```
 
-### 6. Escanear el código QR
-
-En el primer arranque, aparecerá un código QR en la terminal. Abrí WhatsApp en tu celular:
-
-**Ajustes → Dispositivos vinculados → Vincular un dispositivo → Escaneá el QR**
-
-La sesión se guarda en `.wwebjs_auth/` y se reutiliza en los próximos arranques. Solo necesitás escanear una vez.
+Al iniciar por primera vez, el bot mostrará un código QR en la consola. Escanealo desde WhatsApp en tu teléfono (**Dispositivos vinculados → Vincular dispositivo**). La sesión queda guardada en `.wwebjs_auth/` y no necesitás escanear de nuevo.
 
 ---
 
-## Configuración
+## Configuración inicial (.env)
 
-Bug-Mate está diseñado para configurarse completamente desde archivos, sin modificar el código. Hay dos capas de configuración:
+```env
+# Proveedor de IA: "gemini" o "ollama"
+AI_PROVIDER=gemini
 
-- **`.env`** — Secretos y configuración de infraestructura (API keys, números de teléfono, URLs)
-- **`config/*.json`** — Comportamiento del bot (mensajes, menús, flujos, prompts, FAQ, clientes)
+# API key de Gemini (solo si AI_PROVIDER=gemini)
+GEMINI_API_KEY=tu_api_key
+
+# URL de Ollama (solo si AI_PROVIDER=ollama)
+OLLAMA_URL=http://localhost:11434
+OLLAMA_AUTO_START=false
+
+# Tu nombre — aparece en mensajes de escalación al cliente
+DEVELOPER_NAME=Ignacio
+
+# Tu número de WhatsApp en formato internacional, solo dígitos
+# Ejemplo Argentina: 5491123456789
+DEVELOPER_PHONE=5491123456789
+
+# ID del grupo de control (opcional, ver sección más abajo)
+# CONTROL_GROUP_ID=120363XXXXXXXXXX@g.us
+
+PORT=3000
+```
 
 ---
 
-### Variables de entorno
+## Proveedor de IA
 
-| Variable | Requerida | Por defecto | Descripción |
-|---|---|---|---|
-| `GEMINI_API_KEY` | Sí* | — | Clave de API de Google Gemini ([obtener en AI Studio](https://aistudio.google.com/)) |
-| `DEVELOPER_PHONE` | Sí | — | Número de WhatsApp del desarrollador (formato internacional, solo dígitos, ej: `5491123456789`) |
-| `DEVELOPER_NAME` | No | `Developer` | Nombre del desarrollador, usado en notificaciones |
-| `BOT_NAME` | No | `Bug-Mate` | Nombre del bot |
-| `BOT_SYSTEM_PROMPT` | No | — | Overridea el system prompt de IA definido en `bot.config.json` |
-| `ESCALATION_KEYWORDS` | No | — | Keywords separadas por coma que disparan escalación (ej: `urgente,roto,no funciona`) |
-| `PORT` | No | `3000` | Puerto del servidor HTTP |
-| `OLLAMA_URL` | No | `http://localhost:11434` | URL del servidor Ollama (si usás IA local) |
-| `OLLAMA_MODEL` | No | `qwen3:8b` | Nombre del modelo Ollama |
-| `OLLAMA_AUTO_START` | No | `false` | Inicia el proceso de Ollama automáticamente al arrancar |
+### Gemini (Google)
 
-> \*Requerida si usás Gemini (proveedor por defecto). No es necesaria si cambiás a Ollama.
+La opción más simple para empezar. Tiene un tier gratuito.
+
+1. Obtené tu API key en [aistudio.google.com](https://aistudio.google.com/app/apikey)
+2. En `.env`:
+   ```env
+   AI_PROVIDER=gemini
+   GEMINI_API_KEY=tu_api_key
+   ```
+3. En `config/bot.config.json`, sección `ai`:
+   ```json
+   "model": "gemini-2.0-flash",
+   "embeddingModel": "gemini-embedding-001"
+   ```
+
+**Modelos disponibles:** `gemini-2.0-flash` (recomendado, rápido), `gemini-1.5-pro` (más capaz, más lento).
 
 ---
 
-### Comportamiento del bot (bot.config.json)
+### Ollama (local / open source)
 
-`config/bot.config.json` es el archivo de configuración principal. Controla absolutamente todo el comportamiento del bot: identidad, mensajes de bienvenida, opciones del menú, flujos de conversación, configuración de IA y reglas de escalación.
+Corrés la IA completamente en tu máquina, sin cuotas ni API keys.
 
-```jsonc
-{
-  "identity": {
-    "name": "BugMate",
-    "company": "Mi Empresa",
-    "developerName": "Juan",
-    "tone": "amigable, empático, profesional y conciso"
-  },
-  "greeting": {
-    "enabled": true,
-    "message": "¡Hola {clientName}! 👋 Soy *{botName}*, el asistente de *{company}*. ¿En qué te puedo ayudar?",
-    "unknownClientName": "👋",
-    "sessionTimeoutMinutes": 30
-  },
-  "menu": {
-    "message": "Elegí una opción respondiendo con el número:",
-    "invalidChoiceMessage": "No entendí tu respuesta.",
-    "unrecognizedOptionMessage": "Opción no reconocida.",
-    "options": [
-      { "id": "1", "label": "🐛 Reportar un error",  "action": "REPORT_ERROR" },
-      { "id": "2", "label": "❓ Consultar una duda",  "action": "QUERY_KNOWLEDGE" },
-      { "id": "3", "label": "👨‍💻 Hablar con el dev",  "action": "ESCALATE" }
-    ]
-  },
-  "flows": {
-    "reportError": {
-      "steps": [
-        { "key": "description", "prompt": "Describí el error con el mayor detalle posible." },
-        { "key": "screenshot",  "prompt": "¿Podés mandar una captura? Si no tenés, escribí *no tengo*." }
-      ],
-      "confirmationMessage": "Registré el reporte. Voy a notificar a *{developerName}* a la brevedad. 🙏",
-      "developerNotification": "🐛 *Nuevo error*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n📝 {description}\n📎 {screenshot}"
-    },
-    "queryKnowledge": {
-      "inputPrompt": "Contame tu consulta y voy a buscar la información para ayudarte:",
-      "textOnlyMessage": "Por favor escribí tu consulta con texto.",
-      "noResultMessage": "No encontré información específica. Voy a notificar a *{developerName}*.",
-      "noResultDeveloperNotification": "❓ *Consulta sin respuesta*\n\n📱 {clientName} ({clientPhone})\n💬 \"{query}\"",
-      "ragContextInstruction": "Respondé de forma natural y conversacional.",
-      "continuePrompt": "¿Hay algo más en lo que pueda ayudarte? Respondé *menú* para ver las opciones.",
-      "resultPrefix": "Encontré esto que puede ayudarte:"
-    }
-  },
-  "ai": {
-    "model": "gemini-2.0-flash",
-    "embeddingModel": "gemini-embedding-001",
-    "systemPrompt": "Sos {botName}, el asistente de soporte de {company}. Respondé en español rioplatense.",
-    "ragMinScore": 0.72,
-    "ragTopK": 3,
-    "fallbackToEscalation": true,
-    "maxHistoryMessages": 10
-  },
-  "media": {
-    "processImages": true,
-    "processAudio": true,
-    "imagePrompt": "Analizá esta imagen en detalle. Si es una captura de un sistema, describí qué ves.",
-    "audioPrompt": "Transcribí exactamente el mensaje de audio en español.",
-    "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo. ¿Podés describirlo con texto?"
-  },
-  "escalation": {
-    "keywords": ["urgente", "roto", "no funciona", "hablar con alguien"],
-    "clientMessage": "Entendido. Voy a notificar a *{developerName}* para que se comunique con vos. 🙏",
-    "developerNotification": "🔔 *Solicitud de soporte humano*\n\n📱 {clientName} ({clientPhone})\n💬 \"{message}\"",
-    "alreadyEscalatedMessage": "Tu consulta ya fue enviada a *{developerName}*. En cuanto pueda se comunica con vos. 🙏"
+#### 1. Instalar Ollama
+
+Descargá desde [ollama.com](https://ollama.com) e instalá.
+
+#### 2. Descargar los modelos
+
+Necesitás un modelo de **chat** y un modelo de **embeddings** (para la base de conocimiento):
+
+```bash
+# Modelo de chat (elegí uno):
+ollama pull qwen3:8b       # Recomendado — buena calidad, 5 GB
+ollama pull llama3.2:3b    # Más liviano, 2 GB
+ollama pull mistral:7b     # Alternativa sólida, 4 GB
+
+# Modelo de embeddings (requerido para búsqueda semántica en documentos):
+ollama pull nomic-embed-text
+```
+
+#### 3. Configurar
+
+En `.env`:
+```env
+AI_PROVIDER=ollama
+OLLAMA_URL=http://localhost:11434
+OLLAMA_AUTO_START=false  # "true" si querés que el bot inicie Ollama automáticamente
+```
+
+En `config/bot.config.json`, sección `ai`:
+```json
+"model": "qwen3:8b",
+"embeddingModel": "nomic-embed-text"
+```
+
+#### Comparación de modelos de chat para Ollama
+
+| Modelo | Tamaño | Calidad | Velocidad |
+|--------|--------|---------|-----------|
+| `qwen3:8b` | 5 GB | ⭐⭐⭐⭐⭐ | Media |
+| `llama3.2:3b` | 2 GB | ⭐⭐⭐ | Rápida |
+| `mistral:7b` | 4 GB | ⭐⭐⭐⭐ | Media |
+| `llama3.1:8b` | 5 GB | ⭐⭐⭐⭐ | Media |
+
+> **Nota:** Si no usás búsqueda semántica en documentos (solo FAQs por keywords o flows de IA con `"useKnowledge": false`), no necesitás `nomic-embed-text`.
+
+---
+
+## Configuración del bot (bot.config.json)
+
+Toda la lógica conversacional vive en `config/bot.config.json`. No necesitás reiniciar el servidor para ver cambios en los textos — solo reiniciá el proceso.
+
+---
+
+### identity
+
+Define quién es el bot.
+
+```json
+"identity": {
+  "name": "BugMate",
+  "company": "CuyoCode",
+  "developerName": "Ignacio",
+  "tone": "amigable, empático y conciso. Usá lenguaje natural como si fueras una persona real."
+}
+```
+
+Estos valores están disponibles como `{botName}`, `{company}`, `{developerName}` y `{tone}` en todos los templates de mensajes y en el system prompt de la IA.
+
+---
+
+### greeting
+
+Configura el saludo que recibe el usuario al iniciar o retomar una conversación.
+
+```json
+"greeting": {
+  "enabled": true,
+  "message": "¡Hola {clientName}! 👋 Soy *{botName}*, el asistente de *{company}*.\n\n¿En qué te puedo ayudar hoy?",
+  "unknownClientName": "👋",
+  "sessionTimeoutMinutes": 30
+}
+```
+
+| Campo | Descripción |
+|-------|-------------|
+| `enabled` | `false` para ir directo al menú sin saludar |
+| `message` | Texto del saludo. Soporta `{clientName}`, `{botName}`, `{company}` |
+| `unknownClientName` | Fallback cuando el número no está en `clients.json` |
+| `sessionTimeoutMinutes` | Minutos de inactividad antes de reiniciar la sesión y mostrar el saludo de nuevo |
+
+---
+
+### menu
+
+Define las opciones que ve el usuario. Podés agregar todas las que necesites.
+
+```json
+"menu": {
+  "message": "Elegí una opción respondiendo con el número:",
+  "invalidChoiceMessage": "No entendí tu respuesta.",
+  "unrecognizedOptionMessage": "Opción no reconocida.",
+  "options": [
+    { "id": "1", "label": "🐛 Reportar un error",     "flowId": "reportError" },
+    { "id": "2", "label": "❓ Consultar una duda",     "flowId": "queryKnowledge" },
+    { "id": "3", "label": "👨‍💻 Hablar con soporte",   "action": "ESCALATE" },
+    { "id": "4", "label": "📋 Ver menú de nuevo",      "action": "SHOW_MENU" }
+  ]
+}
+```
+
+**Tipos de opción:**
+
+| Propiedad | Descripción |
+|-----------|-------------|
+| `flowId` | Apunta a un flow definido en `flows`. Puede ser `guided` o `ai` |
+| `action: "ESCALATE"` | Escala directamente al desarrollador |
+| `action: "SHOW_MENU"` | Vuelve a mostrar el menú |
+
+---
+
+### flows — Flujos guiados
+
+Un flujo guiado hace preguntas al usuario paso a paso y al final notifica al desarrollador con las respuestas recolectadas.
+
+```json
+"flows": {
+  "reportError": {
+    "type": "guided",
+    "steps": [
+      {
+        "key": "description",
+        "prompt": "Contame qué está pasando. ¿Qué estabas haciendo cuando ocurrió?"
+      },
+      {
+        "key": "screenshot",
+        "prompt": "¿Podés enviarme una captura de pantalla? Si no tenés, escribí *no tengo*."
+      }
+    ],
+    "noMediaFallback": "No adjuntó captura",
+    "confirmationMessage": "Registré el reporte. Voy a notificar a *{developerName}* a la brevedad. 🙏",
+    "developerNotification": "🐛 *Nuevo error*\n\n*Cliente:* {clientName} ({clientPhone})\n*Descripción:* {description}\n*Captura:* {screenshot}"
   }
 }
 ```
 
-> **Placeholders disponibles:** `{clientName}`, `{clientPhone}`, `{botName}`, `{company}`, `{developerName}`, `{message}`, `{query}`, `{description}`, `{screenshot}`, `{mediaType}`. Son reemplazados automáticamente en tiempo de ejecución.
+| Campo | Descripción |
+|-------|-------------|
+| `type` | Siempre `"guided"` |
+| `steps` | Array de pasos. Cada paso tiene `key` (nombre interno) y `prompt` (mensaje al usuario) |
+| `noMediaFallback` | Texto usado cuando un paso espera media pero el usuario no envía nada |
+| `confirmationMessage` | Mensaje al cliente cuando todos los pasos se completan. Soporta `{developerName}` y cualquier `key` de los steps |
+| `developerNotification` | Mensaje al desarrollador. Soporta `{clientName}`, `{clientPhone}`, `{developerName}` y cualquier `key` de los steps como `{description}`, `{screenshot}` |
+
+Podés agregar tantos pasos como necesites:
+
+```json
+"onboarding": {
+  "type": "guided",
+  "steps": [
+    { "key": "empresa", "prompt": "¿En qué empresa trabajás?" },
+    { "key": "rol",     "prompt": "¿Cuál es tu rol?" },
+    { "key": "sistema", "prompt": "¿Qué sistema estás usando?" }
+  ],
+  "confirmationMessage": "¡Gracias! Registré tus datos.",
+  "developerNotification": "🆕 Nuevo usuario: {empresa} — {rol} — {sistema}"
+}
+```
 
 ---
 
-### Base de clientes (clients.json)
+### flows — Flujos de IA
 
-Agregá a tus clientes para que el bot los salude por nombre y sepa qué sistemas usan:
+Un flujo de IA le pasa el control a la inteligencia artificial. Puede responder usando la base de conocimiento (RAG) o libremente.
+
+```json
+"flows": {
+  "queryKnowledge": {
+    "type": "ai",
+    "inputPrompt": "Contame tu consulta y voy a buscar la información:",
+    "textOnlyMessage": "Por favor escribí tu consulta con texto.",
+    "useKnowledge": true,
+    "ragContextInstruction": "Respondé de forma natural y conversacional.",
+    "fallbackToEscalation": true,
+    "noResultMessage": "No encontré información sobre eso. Voy a notificar a *{developerName}*.",
+    "noResultDeveloperNotification": "❓ Consulta sin respuesta\n*Cliente:* {clientName}\n*Consulta:* {query}",
+    "continuePrompt": "¿Algo más? Respondé *menú* para ver las opciones."
+  }
+}
+```
+
+| Campo | Descripción |
+|-------|-------------|
+| `type` | Siempre `"ai"` |
+| `inputPrompt` | Mensaje que le pide al usuario que escriba su consulta |
+| `textOnlyMessage` | Se envía si el usuario manda imagen o audio cuando se espera texto |
+| `useKnowledge` | `true` para buscar en la base de conocimiento antes de responder. `false` para respuesta libre |
+| `systemPromptOverride` | (Opcional) Reemplaza el system prompt global solo para este flow. Soporta `{company}`, `{botName}`, `{developerName}`, `{tone}` |
+| `ragContextInstruction` | Instrucción adicional al prompt cuando se encontró conocimiento |
+| `fallbackToEscalation` | `true`: si no hay conocimiento, escala al dev. `false`: la IA responde igual sin contexto |
+| `noResultMessage` | Mensaje al cliente cuando no hay conocimiento y se escala. Soporta `{developerName}` |
+| `noResultDeveloperNotification` | Notificación al dev. Soporta `{clientName}`, `{clientPhone}`, `{query}` |
+| `continuePrompt` | Mensaje enviado al cliente después de una respuesta exitosa |
+
+**Ejemplo — IA libre sin base de conocimiento:**
+
+```json
+"ventas": {
+  "type": "ai",
+  "inputPrompt": "¿Qué querés saber sobre nuestros servicios?",
+  "textOnlyMessage": "Por favor escribí tu consulta.",
+  "useKnowledge": false,
+  "systemPromptOverride": "Sos el asistente de ventas de {company}. Respondé sobre servicios y precios. Sé entusiasta y profesional.",
+  "continuePrompt": "¿Tenés alguna otra consulta?"
+}
+```
+
+---
+
+### ai
+
+Parámetros globales del proveedor de IA.
+
+```json
+"ai": {
+  "model": "gemini-2.0-flash",
+  "embeddingModel": "gemini-embedding-001",
+  "systemPrompt": "Sos {botName}, el asistente de soporte de {company}. Ayudá a los clientes con sus dudas. Usá español rioplatense.",
+  "ragMinScore": 0.72,
+  "ragTopK": 3,
+  "fallbackToEscalation": true,
+  "maxHistoryMessages": 10
+}
+```
+
+| Campo | Descripción |
+|-------|-------------|
+| `model` | Modelo de chat. Gemini: `gemini-2.0-flash`, `gemini-1.5-pro`. Ollama: `qwen3:8b`, `llama3.2:3b`, etc. |
+| `embeddingModel` | Modelo para embeddings. Gemini: `gemini-embedding-001`. Ollama: `nomic-embed-text` |
+| `systemPrompt` | Prompt base del asistente. Soporta `{company}`, `{botName}`, `{developerName}`, `{tone}` |
+| `ragMinScore` | Score mínimo (0–1) para aceptar un resultado de búsqueda semántica. `0.72` es un buen valor |
+| `ragTopK` | Cuántos resultados de búsqueda vectorial considerar |
+| `fallbackToEscalation` | Default global cuando no se encuentra conocimiento. Se puede sobreescribir por flow |
+| `maxHistoryMessages` | Cuántos mensajes anteriores se guardan en sesión para contexto |
+
+---
+
+### humanDelay
+
+Simula que el bot es una persona real, con delay de lectura y tipeo visible en WhatsApp.
+
+```json
+"humanDelay": {
+  "enabled": true,
+  "readingDelayMinMs": 1000,
+  "readingDelayMaxMs": 3500,
+  "minDelayMs": 2000,
+  "maxDelayMs": 12000,
+  "msPerCharacter": 55
+}
+```
+
+| Campo | Descripción |
+|-------|-------------|
+| `enabled` | `false` para deshabilitar todo delay (recomendado en desarrollo) |
+| `readingDelayMinMs` / `readingDelayMaxMs` | Rango aleatorio antes de empezar a "tipear" |
+| `msPerCharacter` | Milisegundos por caracter para calcular el tiempo de tipeo |
+| `minDelayMs` / `maxDelayMs` | Límites del tiempo de tipeo, sin importar el largo del mensaje |
+
+---
+
+### media — Procesar imágenes y audio
+
+```json
+"media": {
+  "processImages": true,
+  "processAudio": true,
+  "imagePrompt": "Analizá esta imagen. Si es una captura de pantalla, describí qué ves: errores, botones, formularios.",
+  "audioPrompt": "Transcribí exactamente el mensaje de audio en español.",
+  "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo. ¿Podés describirlo con texto?"
+}
+```
+
+| Campo | Descripción |
+|-------|-------------|
+| `processImages` | `true` para que la IA analice imágenes (requiere modelo con visión) |
+| `processAudio` | `true` para que la IA transcriba audios y notas de voz |
+| `imagePrompt` | Instrucción que se le da a la IA cuando recibe una imagen |
+| `audioPrompt` | Instrucción que se le da a la IA cuando recibe un audio |
+| `unsupportedMessage` | Respuesta para tipos no soportados (video, documento, sticker). `{mediaType}` se reemplaza con el tipo |
+
+> **Con Ollama:** El procesamiento de imágenes requiere un modelo multimodal como `llava`. `qwen3:8b` no soporta imágenes. Recomendamos `processImages: false` con Ollama salvo que uses `llava`.
+
+---
+
+### escalation
+
+Configura la escalación automática al desarrollador.
+
+```json
+"escalation": {
+  "keywords": [
+    "hablar con alguien",
+    "soporte humano",
+    "quiero hablar con una persona",
+    "hablar con ignacio"
+  ],
+  "clientMessage": "Entendido. Voy a notificar a *{developerName}* para que se comunique con vos. 🙏",
+  "developerNotification": "🔔 *Solicitud de soporte*\n\n*Cliente:* {clientName} ({clientPhone})\n*Mensaje:* \"{message}\"",
+  "alreadyEscalatedMessage": "Tu consulta ya fue enviada a *{developerName}*. En cuanto pueda se va a comunicar con vos. 🙏"
+}
+```
+
+| Campo | Descripción |
+|-------|-------------|
+| `keywords` | Si el usuario escribe cualquiera de estas frases en cualquier momento, se escala automáticamente |
+| `clientMessage` | Lo que le dice el bot al cliente al escalar. Soporta `{developerName}` |
+| `developerNotification` | Mensaje enviado al desarrollador. Soporta `{clientName}`, `{clientPhone}`, `{message}` |
+| `alreadyEscalatedMessage` | Respuesta si el cliente escribe después de ya haber escalado |
+
+---
+
+## Clientes (clients.json)
+
+Define tus clientes para que el bot los reconozca por número y los salude por nombre.
 
 ```json
 [
   {
     "phone": "5491123456789",
-    "name": "Alicia",
-    "company": "Widgets S.A.",
-    "systems": ["sistema-facturacion", "inventario"]
+    "name": "María García",
+    "company": "Empresa Ejemplo S.A.",
+    "systems": ["Sistema de Facturación", "Portal de Reportes"],
+    "notes": "Usuaria principal del módulo de facturación"
   },
   {
-    "phone": "5499876543210",
-    "name": "Roberto",
-    "company": "La Panadería de Roberto",
-    "systems": ["pos-system"]
+    "phone": "5491187654321",
+    "name": "Carlos López",
+    "company": "Distribuidora Norte",
+    "systems": ["Sistema de Stock"]
   }
 ]
 ```
 
-Si el número no está en este archivo, el bot funciona igual pero usa el saludo genérico configurado en `greeting.unknownClientName`.
+| Campo | Descripción |
+|-------|-------------|
+| `phone` | Número en formato internacional, solo dígitos. Argentina: `549` + número sin 0 ni 15 |
+| `name` | Nombre del cliente, usado en el saludo y en notificaciones al desarrollador |
+| `company` | Empresa del cliente |
+| `systems` | Lista de sistemas que usa (informativo) |
+| `notes` | Notas internas, no se envían al cliente |
+
+Si un número no está registrado, el bot usa el valor de `greeting.unknownClientName` como nombre.
+
+> **Formato Argentina:** el número `011 1234-5678` se escribe como `5491112345678` (549 + 11 + número sin el 15).
 
 ---
 
-### Preguntas frecuentes (knowledge.json)
+## Base de conocimiento
 
-Agregá las preguntas frecuentes que el bot va a usar para responder consultas. La búsqueda usa tanto matching por palabras clave (tags) como búsqueda semántica:
+El sistema de conocimiento tiene dos capas que se consultan en orden:
+
+### FAQs estructuradas (knowledge.json)
+
+Ideal para preguntas frecuentes con respuesta fija. La búsqueda es por keywords, sin costo de IA ni embeddings.
 
 ```json
 [
   {
-    "id": "faq-login",
-    "tags": ["login", "contraseña", "acceso", "no puedo entrar", "olvidé mi contraseña"],
-    "question": "¿Cómo reseteo mi contraseña?",
-    "answer": "Podés resetear tu contraseña desde la pantalla de login. Hacé click en 'Olvidé mi contraseña', ingresá tu email y seguí las instrucciones.",
+    "id": "backup",
+    "tags": ["backup", "copia de seguridad", "respaldo", "recuperar datos"],
+    "question": "¿Cómo hago un backup?",
+    "answer": "El sistema realiza backups automáticos diariamente a las 2 AM.",
     "steps": [
-      "Andá a la pantalla de login",
-      "Hacé click en 'Olvidé mi contraseña'",
-      "Ingresá tu email registrado",
-      "Revisá tu bandeja de entrada y seguí el link"
+      "Ir a Configuración → Backups",
+      "Hacer clic en 'Backup manual'",
+      "Esperar confirmación"
     ]
   }
 ]
 ```
 
----
-
-### Documentos de conocimiento
-
-Agregá cualquier archivo `.md` o `.txt` a la carpeta `config/knowledge-docs/`. Son indexados automáticamente en la base de datos SQLite de vectores al iniciar la aplicación y se usan como contexto (RAG) para las respuestas de IA.
-
-Ejemplos de contenido útil:
-- Documentación del producto
-- Guías paso a paso
-- Notas de versión
-- Wikis internas
-
-**Cómo funciona:** Cuando el usuario hace una consulta, el bot calcula un embedding semántico de la pregunta y busca los fragmentos más relevantes de tus documentos por similitud coseno. Los mejores resultados se inyectan como contexto en el prompt de IA, así el bot responde basándose en **tu documentación real** y no solo en su conocimiento general.
+| Campo | Descripción |
+|-------|-------------|
+| `id` | Identificador único |
+| `tags` | Palabras o frases clave. Si el usuario escribe alguna, se activa esta entrada |
+| `question` | Pregunta de referencia (también usada para matching) |
+| `answer` | Respuesta que se le pasa a la IA como contexto |
+| `steps` | (Opcional) Pasos que se agregan a la respuesta |
 
 ---
 
-## Ejecutar el bot
+### Documentos de conocimiento (knowledge-docs/)
 
-### Desarrollo (con hot reload)
+Para documentación más extensa. Colocá archivos `.md` o `.txt` en `config/knowledge-docs/`. Se indexan automáticamente en una base vectorial (SQLite) al arrancar.
 
-```bash
-npm run start:dev
+```
+config/
+  knowledge-docs/
+    sistema-facturacion.md
+    guia-de-uso.md
+    preguntas-frecuentes.md
 ```
 
-### Producción
+El contenido se divide en chunks y se busca semánticamente. Los parámetros `ragMinScore` y `ragTopK` controlan la sensibilidad.
 
-```bash
-npm run build
-npm run start:prod
+> **Cambio de proveedor:** Si cambiás de Gemini a Ollama o viceversa, los embeddings no son compatibles. Borrá `data/knowledge.sqlite` y reiniciá para reindexar.
+
+---
+
+## Grupo de control (toma de conversación humana)
+
+Permite pausar el bot y tomar el control de conversaciones directamente desde WhatsApp, sin que el cliente note nada.
+
+### Setup
+
+1. Creá un grupo en WhatsApp (puede ser solo vos)
+2. Agregá el número del bot al grupo
+3. Enviá `!grupos` desde el grupo — el bot responde con todos sus grupos e IDs
+4. Copiá el ID y pegalo en `.env`:
+   ```env
+   CONTROL_GROUP_ID=120363XXXXXXXXXX@g.us
+   ```
+5. Reiniciá el servidor
+
+### Pausa automática
+
+Cuando enviás un mensaje **manualmente** desde tu teléfono a un cliente, el bot se pausa automáticamente para ese número y te avisa en el grupo de control:
+
+> ⏸️ Bot pausado para **5491112345678** — tomaste el control de la conversación.
+> Usá `!reactivar 5491112345678` cuando termines.
+
+### Comandos
+
+Enviados desde el grupo de control:
+
+| Comando | Descripción |
+|---------|-------------|
+| `!grupos` | Lista todos los grupos donde está el bot con sus IDs |
+| `!estado` | Muestra qué números tienen el bot pausado actualmente |
+| `!pausar <número>` | Pausa el bot para ese número antes de escribirle |
+| `!reactivar <número>` | Reactiva el bot para ese número |
+
+Ejemplo: `!reactivar 5491112345678` (sin `@c.us`, sin `+`, sin espacios).
+
+---
+
+## Estructura de archivos
+
 ```
-
-### Modo debug
-
-```bash
-npm run start:debug
-```
-
-### Tests
-
-```bash
-npm run test          # Tests unitarios
-npm run test:watch    # Modo watch
-npm run test:cov      # Reporte de cobertura
-npm run test:e2e      # Tests end-to-end
-```
-
-### Calidad de código
-
-```bash
-npm run lint          # ESLint con auto-fix
-npm run format        # Formato con Prettier
+bug-mate/
+├── config/
+│   ├── bot.config.json        # Toda la lógica conversacional
+│   ├── clients.json           # Clientes registrados
+│   ├── knowledge.json         # FAQs estructuradas (búsqueda por keywords)
+│   └── knowledge-docs/        # Documentos para búsqueda semántica (.md, .txt)
+├── data/
+│   └── knowledge.sqlite       # Base vectorial (generada automáticamente)
+├── src/
+│   └── modules/
+│       ├── ai/                # Proveedores de IA (Gemini, Ollama)
+│       ├── bot/               # Lógica principal y máquina de estados
+│       ├── config/            # Carga de .env y archivos JSON
+│       ├── knowledge/         # Búsqueda FAQ + vectorial
+│       ├── messaging/         # Adaptador WhatsApp
+│       └── session/           # Sesiones de conversación (en memoria)
+├── .env                       # Secrets (no commitear)
+├── .env.example               # Template de configuración
+└── .wwebjs_auth/              # Sesión de WhatsApp (generada automáticamente)
 ```
 
 ---
 
-## Despliegue con Docker
+## Ejemplos completos de flujos
 
-La forma más fácil de correr Bug-Mate en producción es con Docker Compose. Todo (Node.js, Chromium para WhatsApp y opcionalmente Ollama) corre en contenedores.
+### Soporte técnico con IA y base de conocimiento
 
-### 1. Configurar el archivo `.env`
-
-Completá tu `.env` con los valores reales antes de buildear.
-
-### 2. Buildear e iniciar
-
-```bash
-docker-compose up --build
+```json
+"soporte": {
+  "type": "ai",
+  "inputPrompt": "Describí tu consulta técnica:",
+  "textOnlyMessage": "Por favor escribí tu consulta con texto.",
+  "useKnowledge": true,
+  "ragContextInstruction": "Respondé con precisión técnica, paso a paso si es necesario.",
+  "fallbackToEscalation": true,
+  "noResultMessage": "No tengo información específica sobre eso. Te conecto con *{developerName}*.",
+  "noResultDeveloperNotification": "🔧 Consulta técnica sin respuesta\n*Cliente:* {clientName}\n*Consulta:* {query}",
+  "continuePrompt": "¿Resolvió tu duda? Si necesitás algo más, escribí *menú*."
+}
 ```
 
-Esto levanta dos servicios:
-- **ollama** — servidor de IA local (usado si `OLLAMA_AUTO_START=true` o si cambiás el proveedor de IA)
-- **bugmate** — la aplicación NestJS
+### Asistente de ventas libre
 
-### 3. Escanear el QR en el primer arranque
-
-```bash
-docker-compose logs -f bugmate
+```json
+"ventas": {
+  "type": "ai",
+  "inputPrompt": "¡Hola! ¿Qué querés saber sobre nuestros servicios?",
+  "textOnlyMessage": "Por favor escribí tu consulta.",
+  "useKnowledge": false,
+  "systemPromptOverride": "Sos el asistente de ventas de {company}. Respondé sobre servicios, precios y propuestas. Sé entusiasta y profesional. Si no tenés el dato exacto, ofrecé coordinar una reunión.",
+  "continuePrompt": "¿Tenés alguna otra consulta sobre nuestros servicios?"
+}
 ```
 
-Mirá los logs hasta que aparezca el QR, escanealo con WhatsApp. La sesión se persiste en `./wwebjs_auth/` (volumen montado), así que solo necesitás hacerlo una vez.
+### Formulario de nueva funcionalidad
 
-### Detener
-
-```bash
-docker-compose down
+```json
+"nuevaFuncionalidad": {
+  "type": "guided",
+  "steps": [
+    { "key": "funcionalidad", "prompt": "¿Qué funcionalidad necesitás? Describila con el mayor detalle posible." },
+    { "key": "motivo",        "prompt": "¿Para qué la necesitás? ¿Qué problema resolvería?" },
+    { "key": "urgencia",      "prompt": "¿Con qué urgencia la necesitás? (baja / media / alta)" }
+  ],
+  "confirmationMessage": "Registré tu solicitud. *{developerName}* la va a revisar y te contactará pronto. 🙌",
+  "developerNotification": "💡 *Nueva funcionalidad solicitada*\n\n*Cliente:* {clientName} ({clientPhone})\n*Funcionalidad:* {funcionalidad}\n*Motivo:* {motivo}\n*Urgencia:* {urgencia}"
+}
 ```
 
----
+### Encuesta de satisfacción
 
-## Arquitectura
-
-Bug-Mate usa una **arquitectura modular de NestJS** con separación clara de responsabilidades. Cada módulo tiene una sola responsabilidad y se comunican mediante el sistema de inyección de dependencias.
-
-```
-AppModule
-├── AppConfigModule    → Carga variables de .env y archivos JSON de config
-├── CoreModule         → Interfaces compartidas, tokens de inyección, manager de Ollama
-├── AiModule           → Capa de abstracción de proveedores de IA (Gemini / Ollama)
-├── SessionModule      → Estado de conversación por usuario en memoria, con auto-limpieza
-├── KnowledgeModule    → Búsqueda en dos niveles: keywords FAQ + búsqueda vectorial semántica
-├── BotModule          → Máquina de estados y orquestación de flujos de conversación
-└── MessagingModule    → Adaptador de WhatsApp (recibe y envía mensajes)
+```json
+"encuesta": {
+  "type": "guided",
+  "steps": [
+    { "key": "puntuacion", "prompt": "Del 1 al 10, ¿cómo calificarías el soporte que recibiste?" },
+    { "key": "comentario",  "prompt": "¿Tenés algún comentario o sugerencia? (Podés escribir *no* si no tenés)" }
+  ],
+  "confirmationMessage": "¡Gracias por tu feedback! Tu opinión nos ayuda a mejorar. 🙏",
+  "developerNotification": "⭐ *Encuesta de satisfacción*\n\n*Cliente:* {clientName}\n*Puntuación:* {puntuacion}/10\n*Comentario:* {comentario}"
+}
 ```
 
-### Máquina de estados de conversación
+### Reporte de error con sistema afectado
 
-Cada sesión de usuario pasa por estos estados:
-
+```json
+"reporteAvanzado": {
+  "type": "guided",
+  "steps": [
+    { "key": "sistema",      "prompt": "¿Qué módulo o sección del sistema tuvo el problema?" },
+    { "key": "descripcion",  "prompt": "Describí el error detalladamente. ¿Qué estabas haciendo?" },
+    { "key": "reproducible", "prompt": "¿El error ocurre siempre o fue una sola vez?" },
+    { "key": "captura",      "prompt": "¿Podés enviarme una captura de pantalla? Si no tenés, escribí *no tengo*." }
+  ],
+  "noMediaFallback": "Sin captura",
+  "confirmationMessage": "Registré el reporte completo. *{developerName}* lo va a revisar a la brevedad. 🙏",
+  "developerNotification": "🐛 *Reporte detallado*\n\n*Cliente:* {clientName} ({clientPhone})\n*Módulo:* {sistema}\n*Descripción:* {descripcion}\n*¿Reproducible?:* {reproducible}\n*Captura:* {captura}"
+}
 ```
-IDLE
- └─(primer mensaje)──────────────► AWAITING_MENU_SELECTION
-                                         ├─(opción 1)──► FLOW_REPORT_ERROR ──► IDLE
-                                         ├─(opción 2)──► FLOW_QUERY_KNOWLEDGE ──► IDLE
-                                         └─(opción 3 o keyword)──► ESCALATED
-```
-
-Las sesiones expiran automáticamente tras el timeout configurado. Una tarea en background limpia las sesiones viejas cada 5 minutos.
-
-### Búsqueda vectorial (RAG)
-
-Cuando el usuario hace una consulta, el servicio de conocimiento ejecuta una búsqueda en dos niveles:
-
-1. **Matching por keywords/tags** — rápido y gratuito, busca en los tags y preguntas de la FAQ
-2. **Búsqueda semántica vectorial** — genera un embedding de Gemini para la consulta y calcula similitud coseno contra todos los documentos indexados en SQLite
-3. Se seleccionan los Top-K resultados (por defecto: 3) con un score mínimo configurable (por defecto: 0.72)
-4. El contenido encontrado se inyecta en el prompt de Gemini como contexto (RAG)
-
-Así el bot responde consultas fundamentadas en **tu documentación real**, no solo en su conocimiento de entrenamiento.
-
----
-
-## Puntos de extensión
-
-Bug-Mate está diseñado para extenderse sin modificar la lógica central:
-
-| Qué extender | Cómo |
-|---|---|
-| Agregar un nuevo proveedor de IA | Implementar la interfaz `AIProvider` en `src/modules/ai/providers/` |
-| Agregar una nueva plataforma de mensajería | Implementar la interfaz `MessageAdapter` en `src/modules/messaging/adapters/` |
-| Agregar un nuevo flujo de conversación | Agregar un nuevo estado y handler en `BotService` |
-| Agregar contenido de conocimiento | Dejar archivos `.md` o `.txt` en `config/knowledge-docs/` |
-| Agregar o actualizar clientes | Editar `config/clients.json` |
-| Personalizar todos los mensajes y prompts | Editar `config/bot.config.json` |
-
----
-
-## Contribuir
-
-¡Las contribuciones son bienvenidas! Así podés empezar:
-
-1. Forkear el repositorio
-2. Crear una rama: `git checkout -b feature/mi-feature`
-3. Hacer los cambios y agregar tests si aplica
-4. Correr `npm run test` y `npm run lint` para verificar que todo pasa
-5. Commitear usando [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m "feat: agregar mi feature"`
-6. Pushear y abrir un Pull Request
-
----
-
-## Licencia
-
-Este proyecto es de código abierto y está disponible bajo la [Licencia MIT](LICENSE).
-
----
-
-> Hecho para fábricas de software que quieren soporte más inteligente sin salir de WhatsApp.

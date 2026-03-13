@@ -7,6 +7,7 @@ import { ConfigLoaderService } from '../config/config-loader.service';
 import { SessionService } from '../session/session.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import type { ConversationSession } from '../session/session.types';
+import type { AiFlow, GuidedFlow } from '../config/types/bot-config.types';
 
 @Injectable()
 export class BotService {
@@ -36,13 +37,8 @@ export class BotService {
       return;
     }
 
-    if (session.state === 'FLOW_REPORT_ERROR') {
-      await this.handleReportErrorFlow(incoming, session, adapter);
-      return;
-    }
-
-    if (session.state === 'FLOW_QUERY_KNOWLEDGE') {
-      await this.handleQueryKnowledgeFlow(incoming, session, adapter);
+    if (session.state === 'FLOW_ACTIVE') {
+      await this.handleActiveFlow(incoming, session, adapter);
       return;
     }
 
@@ -116,146 +112,187 @@ export class BotService {
       return;
     }
 
-    switch (option.action) {
-      case 'REPORT_ERROR':
-        await this.startReportErrorFlow(session, adapter);
-        break;
-      case 'QUERY_KNOWLEDGE':
-        await this.startQueryKnowledgeFlow(session, adapter);
-        break;
-      case 'ESCALATE':
-        await this.escalate(incoming, session, adapter);
-        break;
-      default:
-        await this.send(adapter, session.senderId, menu.unrecognizedOptionMessage);
+    // Built-in actions
+    if (option.action === 'ESCALATE') {
+      await this.escalate(incoming, session, adapter);
+      return;
     }
+
+    if (option.action === 'SHOW_MENU') {
+      const menuText = this.buildMenuText(
+        menu.message,
+        menu.options.map((o) => `*${o.id}*. ${o.label}`),
+      );
+      await this.send(adapter, session.senderId, menuText);
+      return;
+    }
+
+    // Flow-based options
+    if (option.flowId) {
+      const flow = this.configLoader.botConfig.flows[option.flowId];
+      if (!flow) {
+        this.logger.error(`Flow "${option.flowId}" not found in config`);
+        await this.send(adapter, session.senderId, menu.unrecognizedOptionMessage);
+        return;
+      }
+      await this.startFlow(option.flowId, flow, session, adapter);
+      return;
+    }
+
+    await this.send(adapter, session.senderId, menu.unrecognizedOptionMessage);
   }
 
-  // ─── Flow: Report Error ──────────────────────────────────────
+  // ─── Flow dispatcher ─────────────────────────────────────────
 
-  private async startReportErrorFlow(
+  private async startFlow(
+    flowId: string,
+    flow: GuidedFlow | AiFlow,
     session: ConversationSession,
     adapter: MessageAdapter,
   ): Promise<void> {
-    const { steps } = this.configLoader.botConfig.flows.reportError;
-    this.sessionService.setState(session.senderId, 'FLOW_REPORT_ERROR');
-    await this.send(adapter, session.senderId, steps[0].prompt);
+    this.sessionService.setState(session.senderId, 'FLOW_ACTIVE', flowId);
+
+    const prompt = flow.type === 'guided' ? flow.steps[0].prompt : flow.inputPrompt;
+    await this.send(adapter, session.senderId, prompt);
   }
 
-  private async handleReportErrorFlow(
+  private async handleActiveFlow(
     incoming: IncomingMessage,
     session: ConversationSession,
     adapter: MessageAdapter,
   ): Promise<void> {
-    const { steps, noScreenshotFallback, confirmationMessage, developerNotification } =
-      this.configLoader.botConfig.flows.reportError;
+    const flowId = session.activeFlowId;
+    if (!flowId) {
+      this.sessionService.reset(session.senderId);
+      await this.sendGreetingAndMenu(session, adapter);
+      return;
+    }
 
-    const currentStep = steps[session.flowStep];
+    const flow = this.configLoader.botConfig.flows[flowId];
+    if (!flow) {
+      this.logger.error(`Active flow "${flowId}" not found in config`);
+      this.sessionService.reset(session.senderId);
+      return;
+    }
+
+    if (flow.type === 'guided') {
+      await this.handleGuidedFlow(incoming, session, flow, adapter);
+    } else {
+      await this.handleAiFlow(incoming, session, flow, adapter);
+    }
+  }
+
+  // ─── Guided flow ─────────────────────────────────────────────
+
+  private async handleGuidedFlow(
+    incoming: IncomingMessage,
+    session: ConversationSession,
+    flow: GuidedFlow,
+    adapter: MessageAdapter,
+  ): Promise<void> {
+    const currentStep = flow.steps[session.flowStep];
     const value =
       incoming.text ||
-      (incoming.mediaBase64 ? '[imagen adjunta]' : '[media]');
+      (incoming.mediaBase64 ? '[imagen adjunta]' : flow.noMediaFallback ?? '[media]');
 
     this.sessionService.advanceFlowStep(session.senderId, currentStep.key, value);
 
     const nextStepIndex = session.flowStep; // already advanced by advanceFlowStep
-    if (nextStepIndex < steps.length) {
-      await this.send(adapter, session.senderId, steps[nextStepIndex].prompt);
+    if (nextStepIndex < flow.steps.length) {
+      await this.send(adapter, session.senderId, flow.steps[nextStepIndex].prompt);
       return;
     }
 
     // All steps complete — notify developer
+    const { identity } = this.configLoader.botConfig;
     const vars = {
       clientName: session.clientName,
       clientPhone: incoming.senderId.replace('@c.us', '').replace('@lid', ''),
-      developerName: this.configLoader.botConfig.identity.developerName,
-      description: session.flowData['description'] ?? '-',
-      screenshot: session.flowData['screenshot'] ?? noScreenshotFallback,
+      developerName: identity.developerName,
+      ...session.flowData,
     };
 
     await this.send(
       adapter,
       this.botConfig.developerWhatsAppId,
-      this.configLoader.interpolate(developerNotification, vars),
+      this.configLoader.interpolate(flow.developerNotification, vars),
     );
 
     await this.send(
       adapter,
       session.senderId,
-      this.configLoader.interpolate(confirmationMessage, vars),
+      this.configLoader.interpolate(flow.confirmationMessage, vars),
     );
 
     this.sessionService.setState(session.senderId, 'IDLE');
   }
 
-  // ─── Flow: Query Knowledge ───────────────────────────────────
+  // ─── AI flow ─────────────────────────────────────────────────
 
-  private async startQueryKnowledgeFlow(
-    session: ConversationSession,
-    adapter: MessageAdapter,
-  ): Promise<void> {
-    this.sessionService.setState(session.senderId, 'FLOW_QUERY_KNOWLEDGE');
-    await this.send(
-      adapter,
-      session.senderId,
-      this.configLoader.botConfig.flows.queryKnowledge.inputPrompt,
-    );
-  }
-
-  private async handleQueryKnowledgeFlow(
+  private async handleAiFlow(
     incoming: IncomingMessage,
     session: ConversationSession,
+    flow: AiFlow,
     adapter: MessageAdapter,
   ): Promise<void> {
-    const { queryKnowledge } = this.configLoader.botConfig.flows;
     const { identity, ai } = this.configLoader.botConfig;
 
     const query = incoming.text?.trim();
     if (!query) {
-      await this.send(adapter, session.senderId, queryKnowledge.textOnlyMessage);
+      await this.send(adapter, session.senderId, flow.textOnlyMessage);
       return;
     }
 
-    const knowledgeResult = await this.knowledgeService.search(query);
+    const fallbackToEscalation = flow.fallbackToEscalation ?? ai.fallbackToEscalation;
+
+    let knowledgeResult: { content: string } | null = null;
+    if (flow.useKnowledge) {
+      knowledgeResult = await this.knowledgeService.search(query);
+    }
 
     if (knowledgeResult) {
+      const baseSystemPrompt = this.configLoader.interpolate(
+        flow.systemPromptOverride ?? ai.systemPrompt,
+        { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
+      );
       const systemPrompt =
-        this.configLoader.interpolate(ai.systemPrompt, {
-          company: identity.company,
-          developerName: identity.developerName,
-          botName: identity.name,
-          tone: identity.tone,
-        }) +
-        `\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---\n` +
-        queryKnowledge.ragContextInstruction;
+        `${baseSystemPrompt}\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---\n` +
+        (flow.ragContextInstruction ?? '');
 
       const response = await this.ai.generate({ prompt: query, systemPrompt });
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
-    } else if (ai.fallbackToEscalation) {
-      const noResultMsg = this.configLoader.interpolate(queryKnowledge.noResultMessage, {
+    } else if (flow.useKnowledge && fallbackToEscalation) {
+      const noResultMsg = this.configLoader.interpolate(flow.noResultMessage ?? '', {
         developerName: identity.developerName,
       });
-      await this.send(adapter, session.senderId, noResultMsg);
+      if (noResultMsg) await this.send(adapter, session.senderId, noResultMsg);
 
-      await this.send(
-        adapter,
-        this.botConfig.developerWhatsAppId,
-        this.configLoader.interpolate(queryKnowledge.noResultDeveloperNotification, {
-          clientName: session.clientName,
-          clientPhone: incoming.senderId.replace('@c.us', '').replace('@lid', ''),
-          query,
-        }),
-      );
+      if (flow.noResultDeveloperNotification) {
+        await this.send(
+          adapter,
+          this.botConfig.developerWhatsAppId,
+          this.configLoader.interpolate(flow.noResultDeveloperNotification, {
+            clientName: session.clientName,
+            clientPhone: incoming.senderId.replace('@c.us', '').replace('@lid', ''),
+            query,
+          }),
+        );
+      }
 
       this.sessionService.setState(session.senderId, 'ESCALATED');
       return;
     } else {
-      const response = await this.ai.generate({ prompt: query });
+      const systemPrompt = this.configLoader.interpolate(
+        flow.systemPromptOverride ?? ai.systemPrompt,
+        { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
+      );
+      const response = await this.ai.generate({ prompt: query, systemPrompt });
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
     }
 
-    await this.send(adapter, session.senderId, queryKnowledge.continuePrompt);
+    await this.send(adapter, session.senderId, flow.continuePrompt);
     this.sessionService.setState(session.senderId, 'IDLE');
   }
 

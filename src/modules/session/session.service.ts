@@ -34,6 +34,7 @@ export class SessionService {
       senderId,
       clientName: client?.name ?? this.configLoader.botConfig.greeting.unknownClientName,
       state: 'IDLE',
+      activeFlowId: null,
       flowStep: 0,
       flowData: {},
       history: [],
@@ -45,10 +46,11 @@ export class SessionService {
     return { session, isNew: true };
   }
 
-  setState(senderId: string, state: ConversationState): void {
+  setState(senderId: string, state: ConversationState, flowId: string | null = null): void {
     const session = this.sessions.get(senderId);
     if (session) {
       session.state = state;
+      session.activeFlowId = flowId;
       session.flowStep = 0;
       session.flowData = {};
     }
@@ -85,6 +87,7 @@ export class SessionService {
     const session = this.sessions.get(senderId);
     if (session) {
       session.state = 'IDLE';
+      session.activeFlowId = null;
       session.flowStep = 0;
       session.flowData = {};
     }

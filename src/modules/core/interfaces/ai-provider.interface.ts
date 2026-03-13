@@ -17,3 +17,7 @@ export interface AIProvider {
   readonly providerName: string;
   generate(request: AIGenerateRequest): Promise<AIGenerateResponse>;
 }
+
+export interface EmbeddingProvider {
+  embed(text: string): Promise<number[]>;
+}
