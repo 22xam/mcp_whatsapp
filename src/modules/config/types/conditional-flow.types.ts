@@ -7,7 +7,7 @@
  * - END: finish the flow and return session to IDLE
  * - SHOW_MENU: finish the flow and re-show the top-level menu
  */
-export type StepAction = 'ESCALATE' | 'NOTIFY_DEVELOPER' | 'END' | 'SHOW_MENU';
+export type StepAction = 'ESCALATE' | 'NOTIFY_DEVELOPER' | 'END' | 'SHOW_MENU' | 'CREATE_TRELLO_CARD';
 
 // ─── Message step ─────────────────────────────────────────────────────────────
 
@@ -24,6 +24,18 @@ export type StepAction = 'ESCALATE' | 'NOTIFY_DEVELOPER' | 'END' | 'SHOW_MENU';
  *   "nextStep": "END"
  * }
  */
+export interface TrelloCardConfig {
+  /**
+   * Key of the list defined in bot.config.json trello.lists
+   * where the card will be created (e.g. "bugs", "pendientes").
+   */
+  listKey: string;
+  /** Card title. Supports {variable} interpolation. */
+  title: string;
+  /** Card description (body). Supports {variable} interpolation. */
+  description: string;
+}
+
 export interface MessageStep {
   type: 'message';
   /** Text sent to the user. Supports {variable} interpolation. */
@@ -35,6 +47,11 @@ export interface MessageStep {
    * Supports {variable} interpolation.
    */
   notification?: string;
+  /**
+   * Trello card to create when action is CREATE_TRELLO_CARD.
+   * Supports {variable} interpolation in title and description.
+   */
+  trelloCard?: TrelloCardConfig;
   /** Next step ID or "END" to finish the flow */
   nextStep: string | 'END';
 }
@@ -83,6 +100,11 @@ export interface ConditionalMenuOption {
    * is ESCALATE or NOTIFY_DEVELOPER). Supports {variable} interpolation.
    */
   notification?: string;
+  /**
+   * Trello card to create when action is CREATE_TRELLO_CARD.
+   * Supports {variable} interpolation in title and description.
+   */
+  trelloCard?: TrelloCardConfig;
 }
 
 /**

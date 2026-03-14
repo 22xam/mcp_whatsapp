@@ -4,9 +4,10 @@ import { MESSAGE_ADAPTER } from '../core/tokens/injection-tokens';
 import { BotModule } from '../bot/bot.module';
 import { AppConfigModule } from '../config/config.module';
 import { SessionModule } from '../session/session.module';
+import { TrelloModule } from '../trello/trello.module';
 
 @Module({
-  imports: [BotModule, AppConfigModule, SessionModule],
+  imports: [BotModule, AppConfigModule, SessionModule, TrelloModule],
   providers: [
     WhatsAppAdapter,
     {

@@ -7,6 +7,7 @@ import { ConfigLoaderService } from '../config/config-loader.service';
 import { SessionService } from '../session/session.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { ValidateService } from './validate.service';
+import { TrelloService } from '../trello/trello.service';
 import type { ConversationSession } from '../session/session.types';
 import type {
   ConditionalFlow,
@@ -17,6 +18,7 @@ import type {
   ValidateStep,
   AiStep,
   StepAction,
+  TrelloCardConfig,
 } from '../config/types/conditional-flow.types';
 
 @Injectable()
@@ -30,6 +32,7 @@ export class ConditionalFlowService {
     private readonly sessionService: SessionService,
     private readonly knowledgeService: KnowledgeService,
     private readonly validateService: ValidateService,
+    private readonly trelloService: TrelloService,
   ) {}
 
   // ─── Entry points ─────────────────────────────────────────────
@@ -172,7 +175,7 @@ export class ConditionalFlowService {
     await this.send(adapter, session.senderId, this.interpolate(step.text, vars));
 
     if (step.action) {
-      await this.executeAction(step.action, step.notification, session, incoming, adapter, vars);
+      await this.executeAction(step.action, step.notification, session, incoming, adapter, vars, step.trelloCard);
       if (this.isTerminalAction(step.action)) return;
     }
 
@@ -244,7 +247,7 @@ export class ConditionalFlowService {
     }
 
     if (option.action) {
-      await this.executeAction(option.action, option.notification, session, incoming, adapter, vars);
+      await this.executeAction(option.action, option.notification, session, incoming, adapter, vars, option.trelloCard);
       if (this.isTerminalAction(option.action)) return;
     }
 
@@ -420,6 +423,7 @@ export class ConditionalFlowService {
     incoming: IncomingMessage | null,
     adapter: MessageAdapter,
     vars: Record<string, string>,
+    trelloCard?: TrelloCardConfig,
   ): Promise<void> {
     if (action === 'NOTIFY_DEVELOPER' || action === 'ESCALATE') {
       if (notificationTemplate) {
@@ -438,6 +442,12 @@ export class ConditionalFlowService {
         );
         this.sessionService.setState(session.senderId, 'ESCALATED');
       }
+    }
+
+    if (action === 'CREATE_TRELLO_CARD' && trelloCard) {
+      const title = this.interpolate(trelloCard.title, vars);
+      const description = this.interpolate(trelloCard.description, vars);
+      await this.trelloService.createCard(trelloCard.listKey, title, description);
     }
 
     if (action === 'END') {

@@ -6,6 +6,7 @@ import { BotService } from '../../bot/bot.service';
 import { ConfigLoaderService } from '../../config/config-loader.service';
 import { BotConfigService } from '../../config/bot-config.service';
 import { SessionService } from '../../session/session.service';
+import { TrelloService } from '../../trello/trello.service';
 
 @Injectable()
 export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
@@ -22,6 +23,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
     private readonly configLoader: ConfigLoaderService,
     private readonly botConfig: BotConfigService,
     private readonly sessionService: SessionService,
+    private readonly trelloService: TrelloService,
   ) {
     this.client = new Client({
       authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
@@ -113,15 +115,23 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
 
     // ── !ayuda ──────────────────────────────────────────────────
     if (text === '!ayuda') {
+      const trelloStatus = this.trelloService.isEnabled ? '✅ conectado' : '❌ no configurado';
       const help = [
         '🤖 *BugMate — Comandos disponibles*\n',
-        '`!ayuda` — Muestra este mensaje',
-        '`!estado` — Estado del bot y senders pausados',
-        '`!sesiones` — Lista sesiones activas con su estado',
-        '`!flujos` — Lista todos los flujos configurados',
-        '`!pausar <número>` — Pausar el bot para un número',
+        '*📊 Información*',
+        '`!estado` — Estado del bot: uptime, IA, sesiones activas, senders pausados',
+        '`!sesiones` — Lista sesiones activas con flujo y paso actual',
+        '`!flujos` — Lista todos los flujos configurados con sus pasos',
+        '',
+        '*⏸️ Control de conversaciones*',
+        '`!pausar <número>` — Pausar el bot para un número (toma control manual)',
         '`!reactivar <número>` — Reactivar el bot para un número',
+        '',
+        '*🔧 Configuración*',
         '`!grupos` — Lista todos los grupos con sus IDs',
+        `\`!trello\` — Lista tableros y columnas de Trello (${trelloStatus})`,
+        '',
+        '`!ayuda` — Muestra este mensaje',
       ].join('\n');
       await this.client.sendMessage(groupId, help);
       return;
@@ -240,6 +250,55 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
       const senderId = `${reactivateMatch[1]}@c.us`;
       this.resumeSender(senderId);
       await this.client.sendMessage(groupId, `▶️ Bot reactivado para *${reactivateMatch[1]}*.`);
+      return;
+    }
+
+    // ── !trello ──────────────────────────────────────────────────
+    if (text === '!trello') {
+      if (!this.trelloService.isEnabled) {
+        await this.client.sendMessage(
+          groupId,
+          '❌ *Trello no configurado*\n\nAgregá `TRELLO_API_KEY` y `TRELLO_TOKEN` en tu `.env`.\n\nObtené tus credenciales en: https://trello.com/power-ups/admin',
+        );
+        return;
+      }
+
+      await this.client.sendMessage(groupId, '🔄 Consultando tableros de Trello...');
+
+      const boards = await this.trelloService.getBoards();
+      if (boards.length === 0) {
+        await this.client.sendMessage(groupId, '⚠️ No se encontraron tableros de Trello para este token.');
+        return;
+      }
+
+      const lines: string[] = ['📋 *Tableros y columnas de Trello*\n'];
+      lines.push('Copiá los IDs que necesitás al campo `trello.lists` de tu `bot.config.json`.\n');
+
+      for (const board of boards) {
+        lines.push(`*📌 ${board.name}*`);
+        const lists = await this.trelloService.getListsForBoard(board.id);
+        if (lists.length === 0) {
+          lines.push('  _(sin columnas)_');
+        } else {
+          for (const list of lists) {
+            lines.push(`  • *${list.name}*\n    ID: \`${list.id}\``);
+          }
+        }
+        lines.push('');
+      }
+
+      lines.push('*Ejemplo de configuración en bot.config.json:*');
+      lines.push('```');
+      lines.push('"trello": {');
+      lines.push('  "enabled": true,');
+      lines.push('  "lists": {');
+      lines.push('    "bugs": "<ID de la columna Bugs>",');
+      lines.push('    "pendientes": "<ID de la columna Pendientes>"');
+      lines.push('  }');
+      lines.push('}');
+      lines.push('```');
+
+      await this.client.sendMessage(groupId, lines.join('\n'));
       return;
     }
 

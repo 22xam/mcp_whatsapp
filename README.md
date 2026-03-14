@@ -57,11 +57,12 @@
    - [FAQ (knowledge.json)](#faq)
    - [Documentos (knowledge-docs/)](#documentos)
    - [Filtrado por cliente](#filtrado-por-cliente)
-8. [Comandos del grupo de control](#comandos-del-grupo-de-control)
-9. [Toma de control humana](#toma-de-control-humana)
-10. [Diseñá tu propio bot](#diseñá-tu-propio-bot)
-11. [Estructura de archivos](#estructura-de-archivos)
-12. [Arquitectura](#arquitectura)
+8. [Integración con Trello](#integración-con-trello)
+9. [Comandos del grupo de control](#comandos-del-grupo-de-control)
+10. [Toma de control humana](#toma-de-control-humana)
+11. [Diseñá tu propio bot](#diseñá-tu-propio-bot)
+12. [Estructura de archivos](#estructura-de-archivos)
+13. [Arquitectura](#arquitectura)
 
 ---
 
@@ -727,21 +728,92 @@ Para agregar conocimiento a un nuevo cliente:
 
 ---
 
+## Integración con Trello
+
+BugMate puede crear tarjetas en Trello automáticamente cuando un cliente reporta un error. Las tarjetas se crean en las columnas de tus tableros **ya existentes** — el bot nunca crea tableros ni columnas.
+
+### Configuración
+
+**Paso 1 — Obtener credenciales (2 minutos):**
+1. Entrá a [trello.com/power-ups/admin](https://trello.com/power-ups/admin)
+2. Creá un Power-Up (ej. "BugMate Bot") → copiá el `API Key`
+3. Hacé click en "Token" → autorizá → copiá el `Token`
+
+**Paso 2 — Agregar al `.env`:**
+```env
+TRELLO_API_KEY=tu_api_key
+TRELLO_TOKEN=tu_token
+```
+
+**Paso 3 — Descubrir IDs de columnas:**
+
+Enviá `!trello` desde el grupo de control. El bot responde con todos tus tableros y columnas:
+
+```
+📋 Tableros y columnas de Trello
+
+📌 Mi Tablero de Desarrollo
+  • Por hacer      ID: `abc123`
+  • En progreso    ID: `def456`
+  • Hecho          ID: `ghi789`
+```
+
+**Paso 4 — Configurar en `bot.config.json`:**
+```json
+"trello": {
+  "enabled": true,
+  "lists": {
+    "bugs": "abc123",
+    "pendientes": "def456"
+  }
+}
+```
+
+### Crear una tarjeta desde un flujo
+
+Usá la acción `CREATE_TRELLO_CARD` en cualquier paso `message`, junto con `trelloCard`:
+
+```json
+{
+  "type": "message",
+  "text": "✅ Reporte registrado. Te contactamos a la brevedad. 🙏",
+  "action": "CREATE_TRELLO_CARD",
+  "trelloCard": {
+    "listKey": "bugs",
+    "title": "🐛 [{matchedClient.company}] {errorDescription}",
+    "description": "**Cliente:** {matchedClient.name}\n**Teléfono:** {senderPhone}\n**Error:** {errorDescription}\n**Captura:** {errorScreenshot}\n**Hora:** {timestamp}"
+  },
+  "nextStep": "END"
+}
+```
+
+El `title` y `description` soportan interpolación `{variable}` igual que el resto del DSL.
+
+> Si Trello no está configurado (`TRELLO_API_KEY` ausente), la acción se omite silenciosamente — el flujo continúa normalmente.
+
+---
+
 ## Comandos del grupo de control
 
-Creá un grupo de WhatsApp, agregá el número del bot, y configurá `CONTROL_GROUP_ID` en `.env`. Luego enviá estos comandos desde el grupo:
+Creá un grupo de WhatsApp, agregá el número del bot, y configurá `CONTROL_GROUP_ID` en `.env`. Todos los comandos responden **directamente en el chat del grupo** — no necesitás revisar la consola para monitorear el bot.
 
 | Comando | Descripción |
 |---|---|
-| `!ayuda` | Lista todos los comandos disponibles |
+| `!ayuda` | Lista todos los comandos disponibles con su estado actual |
 | `!estado` | Estado del bot: uptime, proveedor IA, sesiones activas, senders pausados |
-| `!sesiones` | Lista todas las sesiones activas con su estado y paso actual |
+| `!sesiones` | Lista todas las sesiones activas con flujo, paso actual y última actividad |
 | `!flujos` | Lista todos los flujos configurados (condicionales y legacy) con sus pasos |
-| `!pausar <teléfono>` | Pausa el bot para un número específico |
-| `!reactivar <teléfono>` | Reactiva el bot para un número específico |
+| `!pausar <teléfono>` | Pausa el bot para un número (tomás el control manualmente) |
+| `!reactivar <teléfono>` | Reactiva el bot para un número |
 | `!grupos` | Lista todos los grupos de WhatsApp en los que está el bot (con sus IDs) |
+| `!trello` | Lista todos los tableros y columnas de Trello con sus IDs para configurar |
 
-**Para encontrar tu group ID:** Enviá `!grupos` desde cualquier grupo donde esté el bot — va a responder con todos los nombres e IDs de grupos.
+**Para encontrar tu group ID:** Enviá `!grupos` desde cualquier grupo donde esté el bot — va a responder con todos los nombres e IDs.
+
+**Notificaciones automáticas en el grupo:**
+- Cuando el dev toma control de una conversación manualmente → `⏸️ Bot pausado para 549XXXXXX`
+- Cuando un cliente escala a humano → notificación al dev
+- Cuando se crea una tarjeta en Trello (si está habilitado el log en consola)
 
 ---
 

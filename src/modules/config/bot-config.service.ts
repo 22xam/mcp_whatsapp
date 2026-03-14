@@ -45,4 +45,16 @@ export class BotConfigService {
   get aiProvider(): 'gemini' | 'ollama' {
     return this.config.get<'gemini' | 'ollama'>('AI_PROVIDER', 'gemini');
   }
+
+  get trelloEnabled(): boolean {
+    return !!(this.config.get<string>('TRELLO_API_KEY') && this.config.get<string>('TRELLO_TOKEN'));
+  }
+
+  get trelloApiKey(): string {
+    return this.config.getOrThrow<string>('TRELLO_API_KEY');
+  }
+
+  get trelloToken(): string {
+    return this.config.getOrThrow<string>('TRELLO_TOKEN');
+  }
 }

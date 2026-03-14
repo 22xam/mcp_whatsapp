@@ -106,6 +106,11 @@
           "text": "✅ Perfecto, registré el reporte. Voy a notificar a *{developerName}* para que lo revise a la brevedad. ¡Gracias por avisarnos! 🙏",
           "action": "NOTIFY_DEVELOPER",
           "notification": "🐛 *Nuevo reporte de error*\n\n👤 *Cliente:* {matchedClient.name}\n🏢 *Empresa:* {matchedClient.company}\n📱 *Teléfono:* {senderPhone}\n📝 *Descripción:* {errorDescription}\n📎 *Captura:* {errorScreenshot}\n🕐 *Hora:* {timestamp}\n📍 *Ruta:* {flowPath}",
+          "trelloCard": {
+            "listKey": "bugs",
+            "title": "🐛 [{matchedClient.company}] {errorDescription}",
+            "description": "**Cliente:** {matchedClient.name}\n**Empresa:** {matchedClient.company}\n**Teléfono:** {senderPhone}\n**Descripción:** {errorDescription}\n**Captura:** {errorScreenshot}\n**Hora:** {timestamp}"
+          },
           "nextStep": "END"
         },
         "queryFunctionality": {
@@ -213,6 +218,13 @@
     "imagePrompt": "Analizá esta imagen en detalle. Si es una captura de pantalla de un sistema, describí qué ves: mensajes de error, botones, formularios, datos. Si es una foto, describí el contenido relevante.",
     "audioPrompt": "Transcribí exactamente el mensaje de audio en español.",
     "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo directamente. ¿Podés describirme con texto qué necesitás?"
+  },
+  "trello": {
+    "enabled": true,
+    "lists": {
+      "bugs": "REEMPLAZAR_CON_ID_DE_LISTA_BUGS",
+      "pendientes": "REEMPLAZAR_CON_ID_DE_LISTA_PENDIENTES"
+    }
   },
   "escalation": {
     "keywords": [
