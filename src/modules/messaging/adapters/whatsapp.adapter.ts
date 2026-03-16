@@ -21,6 +21,9 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   /** Whether the bot is currently sending a message programmatically (to ignore in message_create) */
   private isBotSending = false;
 
+  /** Per-sender processing lock to avoid race conditions when multiple events arrive simultaneously */
+  private readonly processingLocks = new Map<string, Promise<void>>();
+
   constructor(
     private readonly botService: BotService,
     private readonly configLoader: ConfigLoaderService,
@@ -336,6 +339,12 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   private async handleIncomingMessage(message: Message): Promise<void> {
     if (message.fromMe || message.from.endsWith('@g.us')) return;
 
+    // Skip empty text messages — WhatsApp sometimes fires phantom text events alongside audio/image
+    if (message.type === MessageTypes.TEXT && !message.body?.trim()) {
+      this.logger.debug(`Skipping empty text event from ${message.from}`);
+      return;
+    }
+
     // Ignore messages sent before the client was ready (received while offline)
     const messageTimestampMs = message.timestamp * 1000;
     if (this.readyAt !== null && messageTimestampMs < this.readyAt) {
@@ -367,6 +376,20 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
       }
     }
 
+    // Serialize processing per sender to avoid race conditions when multiple
+    // events arrive simultaneously (e.g. WhatsApp fires text + audio events at once)
+    const senderId = message.from;
+    const previous = this.processingLocks.get(senderId) ?? Promise.resolve();
+    const current = previous.then(() => this.processMessage(message)).catch(() => {});
+    this.processingLocks.set(senderId, current);
+    await current;
+    // Clean up the lock entry once done to avoid memory leak on long-running process
+    if (this.processingLocks.get(senderId) === current) {
+      this.processingLocks.delete(senderId);
+    }
+  }
+
+  private async processMessage(message: Message): Promise<void> {
     const incoming = await this.buildIncomingMessage(message);
 
     this.logger.debug(
