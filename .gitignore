@@ -69,6 +69,10 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /data/*
 !/data/.gitkeep
 
+# Bot config — contains real company name, prompts, and flow definitions
+# Copy bot.config.example.json and fill with your own data
+/config/bot.config.json
+
 # Client data — contains real client names, phones, companies
 # Copy clients.example.json and fill with your own data
 /config/clients.json

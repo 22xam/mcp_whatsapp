@@ -40,7 +40,14 @@ export class OllamaProvider implements AIProvider, EmbeddingProvider {
         tone: identity.tone,
       });
 
-    const fullPrompt = `${systemPrompt}\n\nUsuario: ${request.prompt}`;
+    const historyText =
+      request.history && request.history.length > 0
+        ? request.history
+            .map((h) => `${h.role === 'user' ? 'Usuario' : 'Asistente'}: ${h.content}`)
+            .join('\n') + '\n'
+        : '';
+
+    const fullPrompt = `${systemPrompt}\n\n${historyText}Usuario: ${request.prompt}`;
 
     this.logger.debug(`Sending prompt to Ollama model "${model}"`);
 

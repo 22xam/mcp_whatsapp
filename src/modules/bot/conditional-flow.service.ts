@@ -347,7 +347,7 @@ export class ConditionalFlowService {
         `${basePrompt}\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---\n` +
         (step.ragContextInstruction ?? '');
 
-      const response = await this.ai.generate({ prompt: query, systemPrompt });
+      const response = await this.ai.generate({ prompt: query, systemPrompt, history: updated.history.slice(0, -1) });
       this.sessionService.addToHistory(updated.senderId, 'assistant', response.text);
       await this.send(adapter, updated.senderId, response.text);
     } else if (step.useKnowledge && fallback) {
@@ -368,7 +368,7 @@ export class ConditionalFlowService {
         step.systemPromptOverride ?? ai.systemPrompt,
         { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
       );
-      const response = await this.ai.generate({ prompt: query, systemPrompt });
+      const response = await this.ai.generate({ prompt: query, systemPrompt, history: updated.history.slice(0, -1) });
       this.sessionService.addToHistory(updated.senderId, 'assistant', response.text);
       await this.send(adapter, updated.senderId, response.text);
     }

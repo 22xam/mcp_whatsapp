@@ -1,14 +1,14 @@
 {
-  "mode": "ai",
+  "mode": "flow",
   "identity": {
-    "name": "BugMate",
-    "company": "CuyoCode",
-    "developerName": "Ignacio",
+    "name": "BotName",
+    "company": "Your Company",
+    "developerName": "Developer",
     "tone": "amigable, empático, profesional y conciso. Usá un lenguaje natural como si fueras una persona real, no un robot."
   },
   "greeting": {
     "enabled": true,
-    "message": "¡Hola!  Soy *BugMate*, el asistente de atención al cliente de *{company}*.\n\nEstoy acá para ayudarte con cualquier consulta. ¿En qué te puedo ayudar hoy?",
+    "message": "¡Hola!  Soy *{botName}*, el asistente de atención al cliente de *{company}*.\n\nEstoy acá para ayudarte con cualquier consulta. ¿En qué te puedo ayudar hoy?",
     "unknownClientName": "👋",
     "sessionTimeoutMinutes": 30
   },
@@ -19,7 +19,7 @@
     "options": [
       {
         "id": "1",
-        "label": " Soy cliente (desarrollos a medida)",
+        "label": " Soy cliente",
         "conditionalFlowId": "clientFlow",
         "conditionalFlowStartStep": "askClientName"
       },
@@ -71,26 +71,21 @@
             },
             {
               "id": "2",
-              "label": " Consultar sobre funcionalidades del sistema",
+              "label": " Consultar sobre el sistema",
               "nextStep": "queryFunctionality"
             },
             {
               "id": "3",
-              "label": " Errores o problemas comunes",
-              "nextStep": "queryCommonIssues"
-            },
-            {
-              "id": "4",
-              "label": "Hablar con desarrollo",
+              "label": "👨 Hablar con desarrollo",
               "action": "ESCALATE",
               "notification": " *Solicitud de contacto con desarrollo*\n\n *Cliente:* {matchedClient.name}\n *Empresa:* {matchedClient.company}\n *Teléfono:* {senderPhone}\n *Hora:* {timestamp}\n *Ruta:* {flowPath}"
             }
           ],
-          "invalidMessage": "Por favor elegí una opción del 1 al 4."
+          "invalidMessage": "Por favor elegí una opción del 1 al 3."
         },
         "errorDescription": {
           "type": "input",
-          "prompt": "Contame qué está pasando. Describí el error con el mayor detalle posible:\n\n• ¿Qué estabas haciendo cuando ocurrió?\n• ¿Aparece algún mensaje de error?\n• ¿Desde cuándo sucede?",
+          "prompt": "Contame qué está pasando. Describí el error con el mayor detalle posible:",
           "saveAs": "errorDescription",
           "nextStep": "errorScreenshot"
         },
@@ -107,11 +102,6 @@
           "text": "✅ Perfecto, registré el reporte. Voy a notificar a *{developerName}* para que lo revise a la brevedad. ¡Gracias por avisarnos! 🙏",
           "action": "NOTIFY_DEVELOPER",
           "notification": "🐛 *Nuevo reporte de error*\n\n👤 *Cliente:* {matchedClient.name}\n🏢 *Empresa:* {matchedClient.company}\n📱 *Teléfono:* {senderPhone}\n📝 *Descripción:* {errorDescription}\n📎 *Captura:* {errorScreenshot}\n🕐 *Hora:* {timestamp}\n📍 *Ruta:* {flowPath}",
-          "trelloCard": {
-            "listId": "{matchedClient.trelloLists.bugs}",
-            "title": "🐛 [{matchedClient.company}] {errorDescription}",
-            "description": "**Cliente:** {matchedClient.name}\n**Empresa:** {matchedClient.company}\n**Teléfono:** {senderPhone}\n**Descripción:** {errorDescription}\n**Captura:** {errorScreenshot}\n**Hora:** {timestamp}"
-          },
           "nextStep": "END"
         },
         "queryFunctionality": {
@@ -126,21 +116,9 @@
           "continuePrompt": "¿Hay algo más en lo que pueda ayudarte? Escribí tu consulta o *menú* para volver al inicio.",
           "saveQueryAs": "userQuery",
           "nextStep": "END"
-        },
-        "queryCommonIssues": {
-          "type": "ai",
-          "inputPrompt": "Describí el problema o error que estás teniendo y voy a buscar si es un problema conocido con solución:",
-          "textOnlyMessage": "Por favor describí el problema con texto.",
-          "useKnowledge": true,
-          "ragContextInstruction": "Buscá si el problema tiene una solución conocida. Si la encontrás, explicá los pasos claramente. Si no, sugerí contactar con desarrollo.",
-          "fallbackToEscalation": false,
-          "continuePrompt": "¿Te ayudó la respuesta? Si necesitás más ayuda escribí tu consulta o *menú* para volver al inicio.",
-          "saveQueryAs": "commonIssueQuery",
-          "nextStep": "END"
         }
       }
     },
-
     "prospectFlow": {
       "startStep": "askProspectQuery",
       "steps": {
@@ -160,47 +138,11 @@
       }
     }
   },
-  "flows": {
-    "reportError": {
-      "type": "guided",
-      "steps": [
-        {
-          "key": "description",
-          "prompt": "Contame qué está pasando. Describí el error lo más detallado que puedas, por ejemplo: ¿qué estabas haciendo cuando ocurrió? ¿aparece algún mensaje de error?"
-        },
-        {
-          "key": "screenshot",
-          "prompt": "¿Podés enviarme una captura de pantalla del error o una foto de la pantalla? Si no tenés, escribí *no tengo*."
-        }
-      ],
-      "noMediaFallback": "No adjuntó captura",
-      "confirmationMessage": "Perfecto, registré el reporte. Voy a notificar a *{developerName}* para que lo revise a la brevedad. ¡Gracias por avisarnos! 🙏",
-      "developerNotification": "🐛 *Nuevo reporte de error*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n📝 *Descripción:* {description}\n📎 *Captura:* {screenshot}"
-    },
-    "queryKnowledge": {
-      "type": "ai",
-      "inputPrompt": "Contame tu consulta y voy a buscar la información para ayudarte:",
-      "textOnlyMessage": "Por favor escribí tu consulta con texto.",
-      "useKnowledge": true,
-      "ragContextInstruction": "Respondé de forma natural y conversacional.",
-      "fallbackToEscalation": true,
-      "noResultMessage": "No encontré información específica sobre eso en mi base de conocimiento. Voy a notificar a *{developerName}* para que te ayude directamente.",
-      "noResultDeveloperNotification": "❓ *Consulta sin respuesta en base de conocimiento*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n💬 *Consulta:* \"{query}\"",
-      "continuePrompt": "¿Hay algo más en lo que pueda ayudarte? Respondé *menú* para ver las opciones o escribí tu consulta."
-    },
-    "querySales": {
-      "type": "ai",
-      "inputPrompt": "¡Claro! Contame qué necesitás saber sobre nuestros servicios o productos:",
-      "textOnlyMessage": "Por favor escribí tu consulta con texto.",
-      "useKnowledge": false,
-      "systemPromptOverride": "Sos BugMate, el asistente de ventas de {company}. Tu objetivo es responder consultas sobre servicios, precios y propuestas. Sé amable, profesional y entusiasta. Si no tenés la información exacta, ofrecé coordinar una reunión con el equipo de ventas. Usá español rioplatense.",
-      "continuePrompt": "¿Tenés alguna otra consulta? Respondé *menú* para ver las opciones."
-    }
-  },
+  "flows": {},
   "ai": {
     "model": "qwen3:1.7b",
     "embeddingModel": "nomic-embed-text",
-    "systemPrompt": "Sos BugMate, el asistente de soporte técnico de {company}. Tu objetivo es ayudar a los clientes con dudas y problemas sobre el sistema. Respondé de forma natural y humana, como lo haría una persona real de soporte. Sé empático, claro y conciso. Si no sabés algo con certeza, no inventes — decí que vas a consultarlo. Usá español rioplatense.",
+    "systemPrompt": "Sos {botName}, el asistente de soporte técnico de {company}. Tu objetivo es ayudar a los clientes con dudas y problemas sobre el sistema. Respondé de forma natural y humana, como lo haría una persona real de soporte. Sé empático, claro y conciso. Si no sabés algo con certeza, no inventes — decí que vas a consultarlo. Usá español rioplatense.",
     "ragMinScore": 0.60,
     "ragTopK": 3,
     "fallbackToEscalation": true,
@@ -223,21 +165,18 @@
     "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo directamente. ¿Podés describirme con texto qué necesitás?"
   },
   "trello": {
-    "enabled": true
+    "enabled": false
   },
   "escalation": {
     "keywords": [
       "hablar con alguien",
-      "hablar con el desarrollador",
       "soporte humano",
       "quiero hablar con una persona",
       "necesito ayuda humana",
-      "hablar con una persona real",
-      "hablar con ignacio",
-      "comunicarme con el programador"
+      "hablar con una persona real"
     ],
     "clientMessage": "Entendido. Voy a notificar a *{developerName}* para que se comunique con vos a la brevedad. Por favor aguardá su respuesta. 🙏",
-    "developerNotification": "🔔 *BugMate — Solicitud de soporte humano*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n💬 *Mensaje:* \"{message}\"",
+    "developerNotification": "🔔 *Bot — Solicitud de soporte humano*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n💬 *Mensaje:* \"{message}\"",
     "alreadyEscalatedMessage": "Tu consulta ya fue enviada a *{developerName}*. En cuanto pueda se va a comunicar con vos. 🙏"
   }
 }

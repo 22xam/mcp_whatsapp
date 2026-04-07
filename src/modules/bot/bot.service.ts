@@ -29,6 +29,12 @@ export class BotService {
     const { session, isNew } = this.sessionService.getOrCreate(incoming.senderId);
     this.sessionService.addToHistory(incoming.senderId, 'user', incoming.text || '[media]');
 
+    const mode = this.configLoader.botConfig.mode ?? 'flow';
+    if (mode === 'ai') {
+      await this.handleFullAiMode(incoming, session, adapter);
+      return;
+    }
+
     if (isNew || session.state === 'IDLE') {
       await this.sendGreetingAndMenu(session, adapter);
       return;
@@ -277,7 +283,7 @@ export class BotService {
         `${baseSystemPrompt}\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---\n` +
         (flow.ragContextInstruction ?? '');
 
-      const response = await this.ai.generate({ prompt: query, systemPrompt });
+      const response = await this.ai.generate({ prompt: query, systemPrompt, history: session.history.slice(0, -1) });
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
     } else if (flow.useKnowledge && fallbackToEscalation) {
@@ -305,13 +311,64 @@ export class BotService {
         flow.systemPromptOverride ?? ai.systemPrompt,
         { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
       );
-      const response = await this.ai.generate({ prompt: query, systemPrompt });
+      const response = await this.ai.generate({ prompt: query, systemPrompt, history: session.history.slice(0, -1) });
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
     }
 
     await this.send(adapter, session.senderId, flow.continuePrompt);
     this.sessionService.setState(session.senderId, 'IDLE');
+  }
+
+  // ─── Full AI mode ────────────────────────────────────────────
+
+  private async handleFullAiMode(
+    incoming: IncomingMessage,
+    session: ConversationSession,
+    adapter: MessageAdapter,
+  ): Promise<void> {
+    const { identity, ai, escalation } = this.configLoader.botConfig;
+
+    if (session.state === 'ESCALATED') {
+      await this.send(
+        adapter,
+        session.senderId,
+        this.configLoader.interpolate(escalation.alreadyEscalatedMessage, {
+          developerName: identity.developerName,
+        }),
+      );
+      return;
+    }
+
+    if (this.shouldEscalate(incoming.text)) {
+      await this.escalate(incoming, session, adapter);
+      return;
+    }
+
+    const query = incoming.text?.trim();
+    if (!query) {
+      return;
+    }
+
+    const baseSystemPrompt = this.configLoader.interpolate(ai.systemPrompt, {
+      company: identity.company,
+      developerName: identity.developerName,
+      botName: identity.name,
+      tone: identity.tone,
+    });
+
+    let systemPrompt = baseSystemPrompt;
+
+    if (ai.useKnowledge) {
+      const knowledgeResult = await this.knowledgeService.search(query);
+      if (knowledgeResult) {
+        systemPrompt = `${baseSystemPrompt}\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---`;
+      }
+    }
+
+    const response = await this.ai.generate({ prompt: query, systemPrompt, history: session.history.slice(0, -1) });
+    this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
+    await this.send(adapter, session.senderId, response.text);
   }
 
   // ─── Escalation ──────────────────────────────────────────────

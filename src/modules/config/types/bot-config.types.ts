@@ -89,6 +89,8 @@ export interface AiConfig {
   /** Global fallback: escalate when AI has no knowledge result (can be overridden per AiFlow) */
   fallbackToEscalation: boolean;
   maxHistoryMessages: number;
+  /** Whether to use the knowledge base (RAG) when in full AI mode */
+  useKnowledge?: boolean;
 }
 
 export interface HumanDelayConfig {
@@ -121,6 +123,11 @@ export interface TrelloConfig {
 }
 
 export interface BotConfig {
+  /**
+   * 'flow' — guided menus and conditional flows (default).
+   * 'ai'   — the AI responds to every message directly using the global system prompt.
+   */
+  mode?: 'flow' | 'ai';
   identity: BotIdentity;
   greeting: GreetingConfig;
   menu: MenuConfig;
