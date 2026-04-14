@@ -100,6 +100,7 @@ El último comando puede tardar un par de minutos — está descargando las depe
 BugMate necesita una IA para responder preguntas. Tenés dos opciones:
 
 **Opción A — Gemini (Google) ✅ Recomendado para empezar**
+
 - Es gratis para uso básico
 - Funciona en la nube — no necesitás una PC potente
 - Cómo obtener tu clave gratuita:
@@ -109,6 +110,7 @@ BugMate necesita una IA para responder preguntas. Tenés dos opciones:
   4. Copiá la clave que aparece (algo como `AIzaSy...`)
 
 **Opción B — Ollama (corre en tu computadora)**
+
 - Completamente gratuito y privado — nada sale de tu PC
 - Requiere una computadora con al menos 8GB de RAM
 - Ver [instrucciones detalladas de Ollama](#ollama-local-open-source) más abajo
@@ -149,6 +151,7 @@ Abrí el archivo `config/bot.config.json` con tu editor de texto. Ahí podés ca
 - **Tu nombre** — campo `"developerName"` (aparece en los mensajes al cliente)
 
 Por ejemplo:
+
 ```json
 "identity": {
   "name": "MiBot",
@@ -162,6 +165,7 @@ Por ejemplo:
 ### Paso 6 — Agregar tus clientes
 
 Abrí el archivo `config/clients.json`. Si no existe, copiá el de ejemplo:
+
 - **Windows:** `copy config\clients.example.json config\clients.json`
 - **Mac/Linux:** `cp config/clients.example.json config/clients.json`
 
@@ -210,12 +214,14 @@ El bot va a leer ese documento y podrá responder preguntas basándose en él.
 Si querés que el bot cree tarjetas en Trello automáticamente cuando un cliente reporta un error:
 
 **8.1 — Obtener tus credenciales de Trello:**
+
 1. Entrá a [trello.com/power-ups/admin](https://trello.com/power-ups/admin)
 2. Hacé click en **"Crear un Power-Up"**, dale un nombre (ej. "BugMate") y guardá
 3. Copiá el **API Key** que aparece
 4. Hacé click en **"Token"**, autorizá la app, y copiá el **Token**
 
 **8.2 — Agregá las credenciales al `.env`:**
+
 ```env
 TRELLO_API_KEY=tu_api_key_aqui
 TRELLO_TOKEN=tu_token_aqui
@@ -228,6 +234,7 @@ Primero iniciá el bot (Paso 9), configurá el grupo de control, y enviá el com
 **8.4 — Asignar columnas a cada cliente:**
 
 En `clients.json`, agregá los IDs de las columnas de Trello de ese cliente:
+
 ```json
 "trelloLists": {
   "bugs": "ID_de_la_columna_Bugs",
@@ -277,14 +284,14 @@ Desde ese grupo podés usar comandos como `!estado`, `!sesiones`, `!trello`, etc
 
 ### ¿Problemas comunes?
 
-| Problema | Solución |
-|---|---|
-| El QR no aparece | Esperá 30 segundos, si no aparece reiniciá con `npm run start:dev` |
-| El bot no responde | Verificá que el número del bot esté en línea en WhatsApp |
-| Error "GEMINI_API_KEY not set" | Revisá que el `.env` tenga la clave correcta y sin espacios extra |
-| Quiero cambiar el flujo | Editá `bot.config.json`, guardá, y reiniciá el bot |
-| El bot no encuentra al cliente | Verificá que el `phone` en `clients.json` tenga el formato correcto (sin +) |
-| Quiero re-indexar el conocimiento | Borrá el archivo `data/knowledge.sqlite` y reiniciá el bot |
+| Problema                          | Solución                                                                    |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| El QR no aparece                  | Esperá 30 segundos, si no aparece reiniciá con `npm run start:dev`          |
+| El bot no responde                | Verificá que el número del bot esté en línea en WhatsApp                    |
+| Error "GEMINI_API_KEY not set"    | Revisá que el `.env` tenga la clave correcta y sin espacios extra           |
+| Quiero cambiar el flujo           | Editá `bot.config.json`, guardá, y reiniciá el bot                          |
+| El bot no encuentra al cliente    | Verificá que el `phone` en `clients.json` tenga el formato correcto (sin +) |
+| Quiero re-indexar el conocimiento | Borrá el archivo `data/knowledge.sqlite` y reiniciá el bot                  |
 
 ---
 
@@ -315,10 +322,11 @@ Desde ese grupo podés usar comandos como `!estado`, `!sesiones`, `!trello`, etc
    - [Filtrado por cliente](#filtrado-por-cliente)
 8. [Integración con Trello](#integración-con-trello)
 9. [Comandos del grupo de control](#comandos-del-grupo-de-control)
-10. [Toma de control humana](#toma-de-control-humana)
-11. [Diseñá tu propio bot](#diseñá-tu-propio-bot)
-12. [Estructura de archivos](#estructura-de-archivos)
-13. [Arquitectura](#arquitectura)
+10. [CLI — Control desde la terminal](#cli--control-desde-la-terminal)
+11. [Toma de control humana](#toma-de-control-humana)
+12. [Diseñá tu propio bot](#diseñá-tu-propio-bot)
+13. [Estructura de archivos](#estructura-de-archivos)
+14. [Arquitectura](#arquitectura)
 
 ---
 
@@ -337,6 +345,9 @@ cp .env.example .env
 # 3. Ejecutar
 npm run start:dev
 # Escaneá el código QR con tu WhatsApp
+
+# Opcional: CLI para control desde la terminal
+npm run cli -- status
 ```
 
 ---
@@ -400,13 +411,13 @@ PORT=3000
   }
   ```
 
-| | Gemini | Ollama |
-|---|---|---|
-| Costo | Plan gratuito (limitado) | Gratis (corre local) |
-| Privacidad | Nube (Google) | 100% local |
-| Velocidad | Rápido | Depende del hardware |
-| Calidad | Alta | Depende del modelo |
-| Requiere internet | Sí | No |
+|                   | Gemini                   | Ollama               |
+| ----------------- | ------------------------ | -------------------- |
+| Costo             | Plan gratuito (limitado) | Gratis (corre local) |
+| Privacidad        | Nube (Google)            | 100% local           |
+| Velocidad         | Rápido                   | Depende del hardware |
+| Calidad           | Alta                     | Depende del modelo   |
+| Requiere internet | Sí                       | No                   |
 
 ---
 
@@ -425,12 +436,12 @@ Todo el comportamiento del bot se configura en `config/bot.config.json`. **No ha
 }
 ```
 
-| Campo | Descripción |
-|---|---|
-| `name` | Nombre del bot que aparece en los mensajes |
-| `company` | Nombre de la empresa usado en los templates |
-| `developerName` | Nombre del dev que aparece en los mensajes de escalación |
-| `tone` | Instrucción de tono inyectada en el system prompt de la IA |
+| Campo           | Descripción                                                |
+| --------------- | ---------------------------------------------------------- |
+| `name`          | Nombre del bot que aparece en los mensajes                 |
+| `company`       | Nombre de la empresa usado en los templates                |
+| `developerName` | Nombre del dev que aparece en los mensajes de escalación   |
+| `tone`          | Instrucción de tono inyectada en el system prompt de la IA |
 
 ### greeting
 
@@ -465,12 +476,12 @@ El menú principal que se muestra después del saludo.
 
 Cada opción puede usar uno de tres mecanismos de ruteo:
 
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `action` | `"ESCALATE"` \| `"SHOW_MENU"` | Acción integrada, no requiere flujo |
-| `conditionalFlowId` | string | ID de un flujo condicional en el mapa `conditionalFlows` |
-| `conditionalFlowStartStep` | string | Sobreescribe el `startStep` del flujo (opcional) |
-| `flowId` | string | ID de un flujo legacy en el mapa `flows` |
+| Campo                      | Tipo                          | Descripción                                              |
+| -------------------------- | ----------------------------- | -------------------------------------------------------- |
+| `action`                   | `"ESCALATE"` \| `"SHOW_MENU"` | Acción integrada, no requiere flujo                      |
+| `conditionalFlowId`        | string                        | ID de un flujo condicional en el mapa `conditionalFlows` |
+| `conditionalFlowStartStep` | string                        | Sobreescribe el `startStep` del flujo (opcional)         |
+| `flowId`                   | string                        | ID de un flujo legacy en el mapa `flows`                 |
 
 **Bot mínimo — solo saludo:** Configurá `"options": []` y el bot únicamente saludará y esperará. El dev puede tomar el control manualmente via toma de control humana.
 
@@ -519,13 +530,13 @@ Envía un prompt y espera la respuesta del usuario. La respuesta se guarda en `f
 }
 ```
 
-| Campo | Requerido | Descripción |
-|---|---|---|
-| `prompt` | ✅ | Texto enviado al usuario. Soporta interpolación `{variable}`. |
-| `saveAs` | ✅ | Clave en `flowData` donde se guarda la respuesta |
-| `acceptMedia` | ❌ | Si se aceptan imágenes/audio (por defecto: false) |
-| `mediaFallback` | ❌ | Texto guardado cuando se recibe media en vez de texto |
-| `nextStep` | ✅ | ID del siguiente paso o `"END"` |
+| Campo           | Requerido | Descripción                                                   |
+| --------------- | --------- | ------------------------------------------------------------- |
+| `prompt`        | ✅        | Texto enviado al usuario. Soporta interpolación `{variable}`. |
+| `saveAs`        | ✅        | Clave en `flowData` donde se guarda la respuesta              |
+| `acceptMedia`   | ❌        | Si se aceptan imágenes/audio (por defecto: false)             |
+| `mediaFallback` | ❌        | Texto guardado cuando se recibe media en vez de texto         |
+| `nextStep`      | ✅        | ID del siguiente paso o `"END"`                               |
 
 ---
 
@@ -539,7 +550,12 @@ Muestra una lista numerada y rutea según la elección del usuario.
   "message": "¿En qué te puedo ayudar?",
   "options": [
     { "id": "1", "label": "Reportar error", "nextStep": "pedirDescripcion" },
-    { "id": "2", "label": "Hablar con desarrollo", "action": "ESCALATE", "notification": "..." }
+    {
+      "id": "2",
+      "label": "Hablar con desarrollo",
+      "action": "ESCALATE",
+      "notification": "..."
+    }
   ],
   "invalidMessage": "Por favor elegí una opción válida."
 }
@@ -547,12 +563,12 @@ Muestra una lista numerada y rutea según la elección del usuario.
 
 Cada opción puede tener:
 
-| Campo | Descripción |
-|---|---|
-| `id` | Número o texto que el usuario escribe para seleccionar esta opción |
-| `label` | Texto mostrado en el menú |
-| `nextStep` | Paso al que navegar |
-| `action` | Acción terminal (`ESCALATE`, `END`, `SHOW_MENU`, `NOTIFY_DEVELOPER`) |
+| Campo          | Descripción                                                                           |
+| -------------- | ------------------------------------------------------------------------------------- |
+| `id`           | Número o texto que el usuario escribe para seleccionar esta opción                    |
+| `label`        | Texto mostrado en el menú                                                             |
+| `nextStep`     | Paso al que navegar                                                                   |
+| `action`       | Acción terminal (`ESCALATE`, `END`, `SHOW_MENU`, `NOTIFY_DEVELOPER`)                  |
 | `notification` | Template de notificación al desarrollador (usado con `ESCALATE` o `NOTIFY_DEVELOPER`) |
 
 ---
@@ -600,12 +616,12 @@ Envía un mensaje y opcionalmente dispara un efecto secundario (notificar al dev
 }
 ```
 
-| Campo | Requerido | Descripción |
-|---|---|---|
-| `text` | ✅ | Mensaje enviado al usuario. Soporta interpolación `{variable}`. |
-| `action` | ❌ | Efecto secundario disparado después del mensaje |
-| `notification` | ❌ | Template de notificación al desarrollador |
-| `nextStep` | ✅ | ID del siguiente paso o `"END"` |
+| Campo          | Requerido | Descripción                                                     |
+| -------------- | --------- | --------------------------------------------------------------- |
+| `text`         | ✅        | Mensaje enviado al usuario. Soporta interpolación `{variable}`. |
+| `action`       | ❌        | Efecto secundario disparado después del mensaje                 |
+| `notification` | ❌        | Template de notificación al desarrollador                       |
+| `nextStep`     | ✅        | ID del siguiente paso o `"END"`                                 |
 
 ---
 
@@ -630,16 +646,16 @@ Envía un prompt de entrada, luego procesa la consulta del usuario con el provee
 }
 ```
 
-| Campo | Descripción |
-|---|---|
-| `useKnowledge` | Buscar en la base de conocimiento antes de llamar a la IA |
-| `systemPromptOverride` | System prompt personalizado solo para este paso |
-| `ragContextInstruction` | Instrucción adicional al system prompt cuando se encuentra un resultado |
-| `fallbackToEscalation` | Escalar al dev cuando no hay resultado en la base de conocimiento |
-| `noResultMessage` | Mensaje al usuario cuando no hay resultado |
-| `noResultNotification` | Notificación al dev cuando no hay resultado |
-| `saveQueryAs` | Clave en `flowData` donde se guarda la consulta del usuario (por defecto: `userQuery`) |
-| `continuePrompt` | Mensaje enviado después de una respuesta exitosa de la IA |
+| Campo                   | Descripción                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| `useKnowledge`          | Buscar en la base de conocimiento antes de llamar a la IA                              |
+| `systemPromptOverride`  | System prompt personalizado solo para este paso                                        |
+| `ragContextInstruction` | Instrucción adicional al system prompt cuando se encuentra un resultado                |
+| `fallbackToEscalation`  | Escalar al dev cuando no hay resultado en la base de conocimiento                      |
+| `noResultMessage`       | Mensaje al usuario cuando no hay resultado                                             |
+| `noResultNotification`  | Notificación al dev cuando no hay resultado                                            |
+| `saveQueryAs`           | Clave en `flowData` donde se guarda la consulta del usuario (por defecto: `userQuery`) |
+| `continuePrompt`        | Mensaje enviado después de una respuesta exitosa de la IA                              |
 
 > **Nota:** Si el cliente no tiene `knowledgeDocs` configurado en `clients.json`, la búsqueda en la base de conocimiento se omite completamente y el paso cae directamente en escalación. Esto evita que clientes accedan a documentación de otros sistemas.
 
@@ -649,15 +665,15 @@ Envía un prompt de entrada, luego procesa la consulta del usuario con el provee
 
 Estas variables están siempre disponibles en cualquier template (sintaxis `{variable}`):
 
-| Variable | Valor |
-|---|---|
-| `{senderPhone}` | Número de teléfono del usuario (solo dígitos, sin sufijo) |
-| `{clientName}` | Nombre del cliente desde `clients.json`, o el emoji `unknownClientName` |
-| `{timestamp}` | Fecha y hora actual (zona horaria Argentina) |
-| `{flowPath}` | Breadcrumb de pasos visitados, ej. `askClientName → validateClient → clientMenu` |
-| `{developerName}` | Desde `identity.developerName` |
-| `{company}` | Desde `identity.company` |
-| `{botName}` | Desde `identity.name` |
+| Variable          | Valor                                                                            |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `{senderPhone}`   | Número de teléfono del usuario (solo dígitos, sin sufijo)                        |
+| `{clientName}`    | Nombre del cliente desde `clients.json`, o el emoji `unknownClientName`          |
+| `{timestamp}`     | Fecha y hora actual (zona horaria Argentina)                                     |
+| `{flowPath}`      | Breadcrumb de pasos visitados, ej. `askClientName → validateClient → clientMenu` |
+| `{developerName}` | Desde `identity.developerName`                                                   |
+| `{company}`       | Desde `identity.company`                                                         |
+| `{botName}`       | Desde `identity.name`                                                            |
 
 Más cualquier variable recolectada via `saveAs` en pasos `input`, y acceso con notación punto a objetos de pasos `validate` (ej. `{matchedClient.name}`, `{matchedClient.company}`).
 
@@ -665,12 +681,12 @@ Más cualquier variable recolectada via `saveAs` en pasos `input`, y acceso con 
 
 ### Acciones
 
-| Acción | Descripción |
-|---|---|
-| `END` | Termina el flujo, devuelve la sesión a IDLE |
-| `ESCALATE` | Envía `escalation.clientMessage` al usuario + `notification` al dev. El bot deja de responder (estado: ESCALATED) |
-| `NOTIFY_DEVELOPER` | Envía `notification` al dev, continúa el flujo normalmente |
-| `SHOW_MENU` | Termina el flujo y vuelve a mostrar el menú principal |
+| Acción             | Descripción                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `END`              | Termina el flujo, devuelve la sesión a IDLE                                                                       |
+| `ESCALATE`         | Envía `escalation.clientMessage` al usuario + `notification` al dev. El bot deja de responder (estado: ESCALATED) |
+| `NOTIFY_DEVELOPER` | Envía `notification` al dev, continúa el flujo normalmente                                                        |
+| `SHOW_MENU`        | Termina el flujo y vuelve a mostrar el menú principal                                                             |
 
 ---
 
@@ -816,15 +832,15 @@ Hace preguntas de a una, recolecta las respuestas, luego notifica al dev.
 }
 ```
 
-| Campo | Descripción |
-|---|---|
-| `model` | Nombre del modelo de chat (específico del proveedor) |
-| `embeddingModel` | Modelo de embeddings para búsqueda vectorial |
-| `systemPrompt` | System prompt global. Soporta `{company}`, `{developerName}`, `{botName}`, `{tone}` |
-| `ragMinScore` | Puntaje mínimo de similitud coseno (0–1) para aceptar un resultado |
-| `ragTopK` | Cantidad de chunks a recuperar en la búsqueda vectorial |
-| `fallbackToEscalation` | Por defecto global: escalar cuando la IA no encuentra resultado |
-| `maxHistoryMessages` | Cantidad de pares de mensajes guardados en el historial para contexto de la IA |
+| Campo                  | Descripción                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `model`                | Nombre del modelo de chat (específico del proveedor)                                |
+| `embeddingModel`       | Modelo de embeddings para búsqueda vectorial                                        |
+| `systemPrompt`         | System prompt global. Soporta `{company}`, `{developerName}`, `{botName}`, `{tone}` |
+| `ragMinScore`          | Puntaje mínimo de similitud coseno (0–1) para aceptar un resultado                  |
+| `ragTopK`              | Cantidad de chunks a recuperar en la búsqueda vectorial                             |
+| `fallbackToEscalation` | Por defecto global: escalar cuando la IA no encuentra resultado                     |
+| `maxHistoryMessages`   | Cantidad de pares de mensajes guardados en el historial para contexto de la IA      |
 
 ---
 
@@ -843,12 +859,12 @@ Simula el comportamiento humano de tipeo.
 }
 ```
 
-| Campo | Descripción |
-|---|---|
-| `enabled` | Activar/desactivar todos los delays |
-| `readingDelayMinMs` / `readingDelayMaxMs` | Delay aleatorio antes de empezar a tipear (simula lectura) |
-| `minDelayMs` / `maxDelayMs` | Rango de clampeo del delay de tipeo |
-| `msPerCharacter` | Velocidad de tipeo — multiplicado por la longitud de la respuesta |
+| Campo                                     | Descripción                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| `enabled`                                 | Activar/desactivar todos los delays                               |
+| `readingDelayMinMs` / `readingDelayMaxMs` | Delay aleatorio antes de empezar a tipear (simula lectura)        |
+| `minDelayMs` / `maxDelayMs`               | Rango de clampeo del delay de tipeo                               |
+| `msPerCharacter`                          | Velocidad de tipeo — multiplicado por la longitud de la respuesta |
 
 ---
 
@@ -906,15 +922,15 @@ Después de la escalación el bot deja de responderle al usuario (estado: `ESCAL
 ]
 ```
 
-| Campo | Descripción |
-|---|---|
-| `phone` | Teléfono en formato internacional (solo dígitos, sin +) |
-| `name` | Nombre del cliente — usado en `{clientName}` y `{matchedClient.name}` |
-| `company` | Nombre de la empresa — usado en `{matchedClient.company}` y para la validación difusa |
-| `systems` | Lista de sistemas que usa este cliente (informativo) |
-| `knowledgeDocs` | Archivos de conocimiento que este cliente puede consultar (ver abajo) |
-| `trelloLists` | IDs de columnas de Trello por nombre lógico (ej. `"bugs"`, `"pendientes"`) — cada cliente apunta a su propio tablero |
-| `notes` | Notas internas (no se muestran al usuario) |
+| Campo           | Descripción                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `phone`         | Teléfono en formato internacional (solo dígitos, sin +)                                                              |
+| `name`          | Nombre del cliente — usado en `{clientName}` y `{matchedClient.name}`                                                |
+| `company`       | Nombre de la empresa — usado en `{matchedClient.company}` y para la validación difusa                                |
+| `systems`       | Lista de sistemas que usa este cliente (informativo)                                                                 |
+| `knowledgeDocs` | Archivos de conocimiento que este cliente puede consultar (ver abajo)                                                |
+| `trelloLists`   | IDs de columnas de Trello por nombre lógico (ej. `"bugs"`, `"pendientes"`) — cada cliente apunta a su propio tablero |
+| `notes`         | Notas internas (no se muestran al usuario)                                                                           |
 
 El paso `validate` coincide contra `name` y `company` usando matching difuso (case-insensitive, elimina S.A./S.R.L. etc), y también coincide por número de teléfono exacto.
 
@@ -956,6 +972,7 @@ Colocá archivos `.md` o `.txt` en `config/knowledge-docs/`. Se indexan automát
 4. En las consultas, se calcula similitud coseno contra los chunks almacenados
 
 **Tips para mejores resultados:**
+
 - Usá líneas en blanco entre temas — el chunker divide por saltos de línea
 - Preferí títulos descriptivos en vez de genéricos ("Cómo crear una orden" vs "Sección 3")
 - Evitá tablas complejas — convertílas a prosa
@@ -976,6 +993,7 @@ Cada cliente puede estar restringido a consultar únicamente su propia documenta
 ```
 
 **Comportamiento:**
+
 - Cliente con `knowledgeDocs` con archivos → solo busca en esos archivos
 - Cliente con `knowledgeDocs: []` (vacío) → sin búsqueda, escala al dev
 - Cliente sin campo `knowledgeDocs` → sin búsqueda, escala al dev
@@ -983,6 +1001,7 @@ Cada cliente puede estar restringido a consultar únicamente su propia documenta
 Esto garantiza que los clientes no puedan acceder a documentación de los sistemas de otras empresas.
 
 Para agregar conocimiento a un nuevo cliente:
+
 1. Creá `config/knowledge-docs/cima-knowledge.md`
 2. Agregá `"knowledgeDocs": ["cima-knowledge.md"]` a ese cliente en `clients.json`
 3. Borrá `data/knowledge.sqlite` y reiniciá para re-indexar
@@ -996,11 +1015,13 @@ BugMate puede crear tarjetas en Trello automáticamente cuando un cliente report
 ### Configuración
 
 **Paso 1 — Obtener credenciales (2 minutos):**
+
 1. Entrá a [trello.com/power-ups/admin](https://trello.com/power-ups/admin)
 2. Creá un Power-Up (ej. "BugMate Bot") → copiá el `API Key`
 3. Hacé click en "Token" → autorizá → copiá el `Token`
 
 **Paso 2 — Agregar al `.env`:**
+
 ```env
 TRELLO_API_KEY=tu_api_key
 TRELLO_TOKEN=tu_token
@@ -1020,6 +1041,7 @@ Enviá `!trello` desde el grupo de control. El bot responde con todos tus tabler
 ```
 
 **Paso 4 — Habilitá Trello en `bot.config.json`:**
+
 ```json
 "trello": {
   "enabled": true
@@ -1027,6 +1049,7 @@ Enviá `!trello` desde el grupo de control. El bot responde con todos tus tabler
 ```
 
 **Paso 5 — Asigná las columnas a cada cliente en `clients.json`:**
+
 ```json
 {
   "name": "María García",
@@ -1069,23 +1092,86 @@ El `listId`, `title` y `description` soportan interpolación `{variable}` igual 
 
 Creá un grupo de WhatsApp, agregá el número del bot, y configurá `CONTROL_GROUP_ID` en `.env`. Todos los comandos responden **directamente en el chat del grupo** — no necesitás revisar la consola para monitorear el bot.
 
-| Comando | Descripción |
-|---|---|
-| `!ayuda` | Lista todos los comandos disponibles con su estado actual |
-| `!estado` | Estado del bot: uptime, proveedor IA, sesiones activas, senders pausados |
-| `!sesiones` | Lista todas las sesiones activas con flujo, paso actual y última actividad |
-| `!flujos` | Lista todos los flujos configurados (condicionales y legacy) con sus pasos |
-| `!pausar <teléfono>` | Pausa el bot para un número (tomás el control manualmente) |
-| `!reactivar <teléfono>` | Reactiva el bot para un número |
-| `!grupos` | Lista todos los grupos de WhatsApp en los que está el bot (con sus IDs) |
-| `!trello` | Lista todos los tableros y columnas de Trello con sus IDs para configurar |
+| Comando                 | Descripción                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `!ayuda`                | Lista todos los comandos disponibles con su estado actual                  |
+| `!estado`               | Estado del bot: uptime, proveedor IA, sesiones activas, senders pausados   |
+| `!sesiones`             | Lista todas las sesiones activas con flujo, paso actual y última actividad |
+| `!flujos`               | Lista todos los flujos configurados (condicionales y legacy) con sus pasos |
+| `!pausar <teléfono>`    | Pausa el bot para un número (tomás el control manualmente)                 |
+| `!reactivar <teléfono>` | Reactiva el bot para un número                                             |
+| `!grupos`               | Lista todos los grupos de WhatsApp en los que está el bot (con sus IDs)    |
+| `!trello`               | Lista todos los tableros y columnas de Trello con sus IDs para configurar  |
 
 **Para encontrar tu group ID:** Enviá `!grupos` desde cualquier grupo donde esté el bot — va a responder con todos los nombres e IDs.
 
 **Notificaciones automáticas en el grupo:**
+
 - Cuando el dev toma control de una conversación manualmente → `⏸️ Bot pausado para 549XXXXXX`
 - Cuando un cliente escala a humano → notificación al dev
 - Cuando se crea una tarjeta en Trello (si está habilitado el log en consola)
+
+---
+
+## CLI — Control desde la terminal
+
+BugMate incluye una CLI para controlar el bot directamente desde la terminal, sin necesidad de WhatsApp. Incluye un **modo interactivo (REPL)** para monitoreo en tiempo real y un **modo directo** para scripts y automatización.
+
+### Inicio rápido
+
+```bash
+# Modo interactivo
+npm run cli
+
+# Modo directo
+npm run cli -- status
+npm run cli -- sessions
+npm run cli -- pause 5491123456789
+```
+
+### Comandos disponibles
+
+| Comando                    | Descripción                                                                |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `status`                   | Estado del bot: uptime, proveedor IA, sesiones activas, senders pausados   |
+| `sessions`                 | Lista todas las sesiones activas con flujo, paso actual y última actividad |
+| `session clear <número>`   | Limpia la sesión de un número                                              |
+| `flows`                    | Lista todos los flujos configurados (condicionales y legacy) con sus pasos |
+| `pause <número>`           | Pausa el bot para un número (toma de control manual)                       |
+| `resume <número>`          | Reanuda el bot para un número                                              |
+| `paused`                   | Lista todos los senders pausados                                           |
+| `clients`                  | Lista de clientes registrados                                              |
+| `config`                   | Muestra la configuración actual del bot                                    |
+| `trello`                   | Lista tableros y columnas de Trello                                        |
+| `knowledge search <query>` | Busca en la base de conocimiento                                           |
+| `knowledge rebuild`        | Reconstruye el índice de conocimiento                                      |
+| `chat <número>`            | Simula una conversación (solo en modo REPL)                                |
+
+### Modo interactivo (REPL)
+
+Ejecutá `npm run cli` sin argumentos para entrar al modo REPL. Allí podés monitorear el estado del bot en tiempo real y ejecutar comandos de forma interactiva:
+
+```bash
+npm run cli
+```
+
+El REPL muestra automáticamente el estado del bot y permite ejecutar comandos sin el prefijo `npm run cli --`.
+
+### Auto-inicio del servidor
+
+La CLI puede iniciar el servidor automáticamente si no está corriendo. Simplemente ejecutá cualquier comando:
+
+```bash
+npm run cli -- status
+```
+
+La CLI detecta si el servidor está apagado, lo inicia esperando que esté listo, y luego ejecuta el comando. Tiempo máximo de espera: 60 segundos.
+
+### Variables de entorno
+
+| Variable      | Default                 | Descripción              |
+| ------------- | ----------------------- | ------------------------ |
+| `BUGMATE_URL` | `http://localhost:3000` | URL del servidor BugMate |
 
 ---
 
@@ -1209,15 +1295,15 @@ Esta sección es para desarrolladores que quieran entender los internos, contrib
 
 ### Stack tecnológico
 
-| Capa | Tecnología |
-|---|---|
-| Runtime | Node.js + TypeScript |
-| Framework | NestJS (inyección de dependencias, módulos) |
-| WhatsApp | whatsapp-web.js (basado en Puppeteer) |
-| IA — nube | Google Gemini API |
-| IA — local | Ollama (cualquier modelo compatible) |
-| Vector store | SQLite via better-sqlite3 (sin BD externa) |
-| Sesiones | In-memory Map (se resetea al reiniciar) |
+| Capa         | Tecnología                                  |
+| ------------ | ------------------------------------------- |
+| Runtime      | Node.js + TypeScript                        |
+| Framework    | NestJS (inyección de dependencias, módulos) |
+| WhatsApp     | whatsapp-web.js (basado en Puppeteer)       |
+| IA — nube    | Google Gemini API                           |
+| IA — local   | Ollama (cualquier modelo compatible)        |
+| Vector store | SQLite via better-sqlite3 (sin BD externa)  |
+| Sesiones     | In-memory Map (se resetea al reiniciar)     |
 
 ### Flujo de un mensaje
 
@@ -1261,6 +1347,7 @@ BotService.handleMessage()
 #### `messaging/` — Adaptador de WhatsApp
 
 `WhatsAppAdapter` es el único punto de entrada de mensajes. Se encarga de:
+
 - Gestionar el cliente de WhatsApp (auth por QR, estado ready, desconexiones)
 - Filtrar mensajes irrelevantes (grupos, propios, previos al arranque)
 - Descargar y enriquecer media (imágenes → base64, audio → base64)
@@ -1276,13 +1363,13 @@ Implementa la interfaz `MessageAdapter`, lo que lo hace intercambiable. Para agr
 
 **`ConditionalFlowService`** — el intérprete de flujos condicionales. Recorre el grafo de pasos nombrados definido en `bot.config.json`. Cada tipo de paso tiene un handler dedicado:
 
-| Tipo de paso | Ejecutar (mostrar prompt) | Procesar (manejar input del usuario) |
-|---|---|---|
-| `input` | Enviar prompt | Guardar texto en `flowData`, avanzar |
-| `menu` | Enviar opciones numeradas | Buscar selección, rutear o actuar |
-| `validate` | — (se ejecuta inmediatamente) | Matching difuso contra fuente de datos |
-| `message` | Enviar texto + acción opcional | — (auto-ejecutable) |
-| `ai` | Enviar prompt de entrada | Buscar en conocimiento → generar respuesta |
+| Tipo de paso | Ejecutar (mostrar prompt)      | Procesar (manejar input del usuario)       |
+| ------------ | ------------------------------ | ------------------------------------------ |
+| `input`      | Enviar prompt                  | Guardar texto en `flowData`, avanzar       |
+| `menu`       | Enviar opciones numeradas      | Buscar selección, rutear o actuar          |
+| `validate`   | — (se ejecuta inmediatamente)  | Matching difuso contra fuente de datos     |
+| `message`    | Enviar texto + acción opcional | — (auto-ejecutable)                        |
+| `ai`         | Enviar prompt de entrada       | Buscar en conocimiento → generar respuesta |
 
 **`ValidateService`** — valida el input del usuario contra fuentes de datos. Actualmente soporta `"clients"` (desde `clients.json`). Estrategia de matching: teléfono exacto → nombre/empresa difuso (case-insensitive, elimina sufijos legales como S.A., S.R.L.).
 
@@ -1317,6 +1404,7 @@ Las sesiones expiran después de `greeting.sessionTimeoutMinutes` de inactividad
 2. **Búsqueda vectorial** — embeddea la consulta, calcula similitud coseno contra todos los chunks almacenados, retorna los top-K resultados por encima de `ragMinScore`.
 
 Los documentos en `knowledge-docs/` se indexan automáticamente al iniciar:
+
 - El texto se normaliza (CRLF → LF) y se divide en chunks de ~500 palabras por saltos de línea
 - Cada chunk se embeddea y se guarda en SQLite como BLOB (`Float32Array`)
 - Los chunks ya indexados se saltean (clave: `filename::chunkIndex`)
@@ -1326,6 +1414,7 @@ Cuando un cliente tiene `knowledgeDocs` configurado, la búsqueda vectorial se f
 #### `config/` — Carga de configuración
 
 **`ConfigLoaderService`** — carga y cachea todos los archivos de config al iniciar:
+
 - `bot.config.json` → `BotConfig`
 - `clients.json` → `ClientConfig[]`
 - `knowledge.json` → `KnowledgeEntry[]`

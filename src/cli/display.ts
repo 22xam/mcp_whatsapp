@@ -85,15 +85,36 @@ export function table(headers: string[], rows: string[][]): string {
 // ─── Banner ───────────────────────────────────────────────────────────────────
 
 export function banner(): void {
-  const lines = [
-    '',
-    `${c.cyan}${c.bold}  ╔══════════════════════════════════════════════════╗${c.reset}`,
-    `${c.cyan}${c.bold}  ║${c.reset}          ${c.bold}${c.white}BugMate CLI${c.reset} ${c.dim}— Panel de Control${c.reset}          ${c.cyan}${c.bold}║${c.reset}`,
-    `${c.cyan}${c.bold}  ║${c.reset}   ${c.dim}Controlá tu bot de WhatsApp desde la consola${c.reset}   ${c.cyan}${c.bold}║${c.reset}`,
-    `${c.cyan}${c.bold}  ╚══════════════════════════════════════════════════╝${c.reset}`,
-    '',
+  const G  = '\x1b[92m';  // bright green  — body
+  const Y  = '\x1b[93m';  // bright yellow — antennae, title
+  const B  = '\x1b[96m';  // bright cyan   — glasses
+  const W  = '\x1b[97m';  // white         — pupils, mic
+  const D  = '\x1b[90m';  // gray          — headphones
+  const bd = '\x1b[1m';
+  const R  = '\x1b[0m';
+
+  //   positions (0-indexed, accounting for 2-space indent):
+  //   first antenna  ◆ at col 11
+  //   second antenna ◆ at col 23
+  //   box outer width = 32  (indent 2 + border 1 + inner 28 + border 1)
+  const art = [
+    `           ${Y}◆${R}           ${Y}◆${R}`,
+    `           ${G}│${R}           ${G}│${R}`,
+    `  ${D}┌────────┴───────────┴───────┐${R}`,
+    `  ${D}│${R}   ${B}╔══════╗${R}   ${B}╔══════╗${R}   ${D}│${R}`,
+    `  ${D}│${R}   ${B}║${R}  ${W}◉${R}   ${B}║${R}   ${B}║${R}   ${W}◉${R}  ${B}║${R}   ${D}│${R}  ${W}◉${D}─${R}`,
+    `  ${D}│${R}   ${B}╚══════╝${R}   ${B}╚══════╝${R}   ${D}│${R}`,
+    `  ${D}│${R}       ${G}╰─────────────╯${R}       ${D}│${R}`,
+    `  ${D}└──────────────────────────────┘${R}`,
   ];
-  process.stdout.write(lines.join('\n'));
+
+  const title = [
+    `  ${bd}${Y}╔══════════════════════════════════╗${R}`,
+    `  ${bd}${Y}║${R}  ${bd}${W}BUG-MATE${R} ${G}CLI${R}  ${D}·${R}  ${D}Panel de Control${R}  ${bd}${Y}║${R}`,
+    `  ${bd}${Y}╚══════════════════════════════════╝${R}`,
+  ];
+
+  process.stdout.write('\n' + art.join('\n') + '\n\n' + title.join('\n') + '\n\n');
 }
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────

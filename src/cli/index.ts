@@ -19,10 +19,51 @@
  *   npm run cli -- paused
  */
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+import { spawn, type ChildProcess } from 'child_process';
 import { ApiClient } from './api-client';
 import { startRepl } from './repl';
-import { c, fail, info } from './display';
+import { c, fail, info, spinner } from './display';
 import * as cmds from './commands';
+
+// ─── Server auto-start ────────────────────────────────────────────────────────
+
+async function ensureServerRunning(client: ApiClient): Promise<void> {
+  if (await client.isConnected()) return;
+
+  const stop = spinner('Iniciando servidor BugMate...');
+
+  const proc: ChildProcess = spawn('npm', ['run', 'start:dev'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: true,
+    env: { ...process.env },
+  });
+
+  // Kill server when CLI exits
+  const cleanup = () => { try { proc.kill(); } catch { /* already dead */ } };
+  process.on('exit', cleanup);
+  process.on('SIGINT', () => { cleanup(); process.exit(0); });
+  process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+
+  // Wait up to 60 s for the server to respond
+  const deadline = Date.now() + 60_000;
+  let ready = false;
+
+  while (!ready && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1000));
+    ready = await client.isConnected();
+  }
+
+  stop();
+
+  if (!ready) {
+    cleanup();
+    console.error('\n' + fail('El servidor no arrancó en 60 s. Revisá los logs con: npm run start:dev'));
+    process.exit(1);
+  }
+}
 
 // ─── Direct command runner ────────────────────────────────────────────────────
 
@@ -152,18 +193,18 @@ ${c.bold}Variables de entorno:${c.reset}
 const args = process.argv.slice(2);
 const client = new ApiClient();
 
-if (args.length === 0) {
-  // Interactive REPL mode
-  startRepl(client).catch((err) => {
-    console.error(fail(err.message));
-    process.exit(1);
-  });
-} else {
-  // Direct command mode
-  runDirect(client, args)
-    .then(() => console.log(''))
-    .catch((err) => {
-      console.error(fail(err.message));
-      process.exit(1);
-    });
-}
+(async () => {
+  await ensureServerRunning(client);
+
+  if (args.length === 0) {
+    // Interactive REPL mode
+    await startRepl(client);
+  } else {
+    // Direct command mode
+    await runDirect(client, args);
+    console.log('');
+  }
+})().catch((err) => {
+  console.error(fail(err.message));
+  process.exit(1);
+});

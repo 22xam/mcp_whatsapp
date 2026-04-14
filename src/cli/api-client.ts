@@ -1,4 +1,5 @@
-const DEFAULT_BASE_URL = 'http://localhost:3000';
+const DEFAULT_PORT = process.env['PORT'] ?? '3000';
+const DEFAULT_BASE_URL = `http://localhost:${DEFAULT_PORT}`;
 
 export class ApiClient {
   readonly baseUrl: string;

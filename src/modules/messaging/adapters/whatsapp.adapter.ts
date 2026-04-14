@@ -34,6 +34,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
       authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
       puppeteer: {
         headless: true,
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
     });
