@@ -6,6 +6,8 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { BotControlService } from '../bot/bot-control.service';
 import { BotService } from '../bot/bot.service';
 import { TrelloService } from '../trello/trello.service';
+import { BroadcastService } from './broadcast.service';
+import { OpenRouterProvider } from '../ai/providers/openrouter.provider';
 import type { MessageAdapter, OutgoingMessage, IncomingMessage } from '../core/interfaces/message-adapter.interface';
 
 /** In-memory adapter that captures bot responses instead of sending to WhatsApp. */
@@ -30,6 +32,8 @@ export class ApiController {
     private readonly botControlService: BotControlService,
     private readonly botService: BotService,
     private readonly trelloService: TrelloService,
+    private readonly broadcastService: BroadcastService,
+    private readonly openRouterProvider: OpenRouterProvider,
   ) {}
 
   // ─── Status ──────────────────────────────────────────────────
@@ -184,6 +188,8 @@ export class ApiController {
       },
       ai: {
         provider: this.botConfig.aiProvider,
+        model: config.ai.model,
+        embeddingModel: config.ai.embeddingModel,
         useKnowledge: config.ai.useKnowledge,
         ragTopK: config.ai.ragTopK,
         ragMinScore: config.ai.ragMinScore,
@@ -198,6 +204,28 @@ export class ApiController {
         enabled: this.trelloService.isEnabled,
         lists: (config.trello as any)?.lists ?? {},
       },
+    };
+  }
+
+  // OpenRouter
+
+  @Get('openrouter/models')
+  async getOpenRouterModels() {
+    const models = await this.openRouterProvider.listChatModels();
+    return {
+      provider: 'openrouter',
+      count: models.length,
+      models,
+    };
+  }
+
+  @Get('openrouter/embedding-models')
+  async getOpenRouterEmbeddingModels() {
+    const models = await this.openRouterProvider.listEmbeddingModels();
+    return {
+      provider: 'openrouter',
+      count: models.length,
+      models,
     };
   }
 
@@ -216,6 +244,30 @@ export class ApiController {
       result.push({ id: board.id, name: board.name, lists });
     }
     return { enabled: true, boards: result };
+  }
+
+  // ─── Broadcast ───────────────────────────────────────────────
+
+  @Post('broadcast/good-morning')
+  async broadcastCampaignIntro(@Body() body: { phones?: string[] }) {
+    const clients = this.configLoader.clients;
+
+    // Use provided list or fall back to all registered clients
+    const phones: string[] =
+      body?.phones && body.phones.length > 0
+        ? body.phones
+        : clients.map((c) => c.phone);
+
+    if (phones.length === 0) {
+      return { ok: false, message: 'No hay clientes registrados en clients.json.' };
+    }
+
+    const results = await this.broadcastService.sendCampaignIntro(phones);
+    const sent = results.filter((r) => r.status === 'sent').length;
+    const failed = results.filter((r) => r.status === 'failed').length;
+    const skipped = results.filter((r) => r.status === 'skipped').length;
+
+    return { ok: true, sent, failed, skipped, results };
   }
 
   // ─── Helpers ─────────────────────────────────────────────────

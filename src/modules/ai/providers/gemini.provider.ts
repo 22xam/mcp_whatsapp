@@ -1,9 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import {
-  GoogleGenerativeAI,
-  type GenerativeModel,
-  type Part,
-} from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import type { AIProvider, AIGenerateRequest, AIGenerateResponse } from '../../core/interfaces/ai-provider.interface';
 import { BotConfigService } from '../../config/bot-config.service';
 import { ConfigLoaderService } from '../../config/config-loader.service';
@@ -12,25 +8,22 @@ import { ConfigLoaderService } from '../../config/config-loader.service';
 export class GeminiProvider implements AIProvider, OnModuleInit {
   readonly providerName = 'Gemini';
   private readonly logger = new Logger(GeminiProvider.name);
-  private readonly genAI: GoogleGenerativeAI;
-  private model: GenerativeModel;
-  private embeddingModel: GenerativeModel;
+  private genAI?: GoogleGenAI;
+  private modelName: string;
+  private embeddingModelName: string;
 
   constructor(
     private readonly botConfig: BotConfigService,
     private readonly configLoader: ConfigLoaderService,
-  ) {
-    // Only initialize the client here — config JSON is not ready yet
-    this.genAI = new GoogleGenerativeAI(this.botConfig.geminiApiKey);
-  }
+  ) {}
 
   onModuleInit(): void {
-    // JSON config is loaded by ConfigLoaderService.onModuleInit() before this runs
-    const modelName = this.configLoader.botConfig.ai.model;
-    const embeddingModelName = this.configLoader.botConfig.ai.embeddingModel;
-    this.model = this.genAI.getGenerativeModel({ model: modelName });
-    this.embeddingModel = this.genAI.getGenerativeModel({ model: embeddingModelName });
-    this.logger.log(`Gemini initialized — model: ${modelName}`);
+    this.modelName = this.configLoader.botConfig.ai.model;
+    this.embeddingModelName = this.configLoader.botConfig.ai.embeddingModel;
+    if (this.botConfig.aiProvider === 'gemini') {
+      this.genAI = new GoogleGenAI({ apiKey: this.requireApiKey() });
+    }
+    this.logger.log(`Gemini initialized - model: ${this.modelName}`);
   }
 
   async generate(request: AIGenerateRequest): Promise<AIGenerateResponse> {
@@ -45,7 +38,7 @@ export class GeminiProvider implements AIProvider, OnModuleInit {
         tone: identity.tone,
       });
 
-    const parts: Part[] = [];
+    const parts: Array<{ text?: string; inlineData?: { data: string; mimeType: string } }> = [];
 
     if (request.imageBase64 && request.imageMimeType) {
       parts.push({
@@ -61,9 +54,12 @@ export class GeminiProvider implements AIProvider, OnModuleInit {
     this.logger.debug(`Generating response${request.imageBase64 ? ' (with image)' : ''}`);
 
     try {
-      const result = await this.model.generateContent(parts);
+      const result = await this.getClient().models.generateContent({
+        model: this.modelName,
+        contents: [{ role: 'user', parts }],
+      });
       return {
-        text: result.response.text(),
+        text: result.text ?? '',
         metadata: { model: ai.model },
       };
     } catch (error) {
@@ -74,11 +70,29 @@ export class GeminiProvider implements AIProvider, OnModuleInit {
 
   async embed(text: string): Promise<number[]> {
     try {
-      const result = await this.embeddingModel.embedContent(text);
-      return result.embedding.values;
+      const result = await this.getClient().models.embedContent({
+        model: this.embeddingModelName,
+        contents: text,
+      });
+      return result.embeddings?.[0]?.values ?? [];
     } catch (error) {
       this.logger.error(`Gemini embedding failed: ${(error as Error).message}`);
       throw new Error(`Embedding error: ${(error as Error).message}`);
     }
+  }
+
+  private getClient(): GoogleGenAI {
+    if (!this.genAI) {
+      this.genAI = new GoogleGenAI({ apiKey: this.requireApiKey() });
+    }
+    return this.genAI;
+  }
+
+  private requireApiKey(): string {
+    const apiKey = this.botConfig.geminiApiKey;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is required when AI_PROVIDER=gemini');
+    }
+    return apiKey;
   }
 }

@@ -51,7 +51,10 @@ export class KnowledgeService implements OnModuleInit {
     const faqResult = this.searchFaq(query);
     if (faqResult) return faqResult;
 
-    // 2. Semantic search via embeddings
+    // 2. Semantic search via embeddings — skip if no vectors indexed
+    const count = (this.db.prepare('SELECT COUNT(*) as n FROM vectors').get() as { n: number }).n;
+    if (count === 0) return null;
+
     const queryEmbedding = await this.embeddingProvider.embed(query);
     const results = this.vectorSearch(queryEmbedding, topK, allowedSources);
 

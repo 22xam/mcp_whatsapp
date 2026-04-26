@@ -16,8 +16,8 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   private client: Client;
   private readyAt: number | null = null;
 
-  /** Whether the bot is currently sending a message programmatically (to ignore in message_create) */
-  private isBotSending = false;
+  /** Recipients the bot is currently sending to — message_create events for these are ignored */
+  private readonly botSendingTo = new Set<string>();
 
   /** Per-sender processing lock to avoid race conditions when multiple events arrive simultaneously */
   private readonly processingLocks = new Map<string, Promise<void>>();
@@ -78,8 +78,12 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
     // Outgoing messages sent manually by the developer — auto-pause the bot
     this.client.on('message_create', async (message: Message) => {
       if (!message.fromMe) return;
-      // Ignore messages sent programmatically by the bot itself
-      if (this.isBotSending) return;
+      const botSendingSnapshot = [...this.botSendingTo];
+      this.logger.debug(`message_create → to=${message.to} | botSendingTo=[${botSendingSnapshot.join(',')}]`);
+      if (this.botSendingTo.has(message.to)) {
+        this.logger.debug(`message_create ignored (bot-originated) for ${message.to}`);
+        return;
+      }
       await this.handleOutgoingMessage(message);
     });
 
@@ -87,16 +91,42 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   }
 
   async sendMessage(message: OutgoingMessage): Promise<void> {
+    this.botSendingTo.add(message.recipientId);
     try {
       await this.simulateTyping(message.recipientId, message.text);
-      this.isBotSending = true;
       await this.client.sendMessage(message.recipientId, message.text);
       this.logger.debug(`Sent to ${message.recipientId}`);
     } catch (error) {
       this.logger.error(`Failed to send to ${message.recipientId}: ${(error as Error).message}`);
       throw error;
     } finally {
-      this.isBotSending = false;
+      setTimeout(() => {
+        this.botSendingTo.delete(message.recipientId);
+      }, 3000);
+    }
+  }
+
+  /**
+   * Sends a broadcast message without triggering the auto-pause logic.
+   * Use this for outbound-only messages (campaign, notifications) that
+   * should NOT be interpreted as the developer taking over the conversation.
+   */
+  async sendBroadcast(recipientId: string, text: string): Promise<void> {
+    this.logger.debug(`sendBroadcast → adding ${recipientId} to botSendingTo`);
+    this.botSendingTo.add(recipientId);
+    try {
+      await this.client.sendMessage(recipientId, text);
+      this.logger.debug(`Broadcast sent to ${recipientId}`);
+    } catch (error) {
+      this.logger.error(`Broadcast failed to ${recipientId}: ${(error as Error).message}`);
+      throw error;
+    } finally {
+      // Small delay before removing from set so the message_create event
+      // (which arrives asynchronously after sendMessage resolves) is still blocked
+      setTimeout(() => {
+        this.botSendingTo.delete(recipientId);
+        this.logger.debug(`sendBroadcast → removed ${recipientId} from botSendingTo`);
+      }, 3000);
     }
   }
 
@@ -347,7 +377,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   // ─── Incoming message handler ─────────────────────────────────
 
   private async handleIncomingMessage(message: Message): Promise<void> {
-    if (message.fromMe || message.from.endsWith('@g.us')) return;
+    if (message.fromMe || message.from.endsWith('@g.us') || message.from === 'status@broadcast') return;
 
     // Skip empty text messages — WhatsApp sometimes fires phantom text events alongside audio/image
     if (message.type === MessageTypes.TEXT && !message.body?.trim()) {

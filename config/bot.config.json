@@ -1,207 +1,219 @@
 {
   "mode": "ai",
   "identity": {
-    "name": "BugMate",
-    "company": "CuyoCode",
-    "developerName": "Ignacio",
-    "tone": "amigable, empático, profesional y conciso. Usá un lenguaje natural como si fueras una persona real, no un robot."
+    "name": "Evangelina",
+    "company": "Lista 26 Roja — Dignidad y Trabajo",
+    "developerName": "Suarez Matias Gonzalo",
+    "tone": "cercana, comprometida y combativa en defensa de los derechos docentes. Hablás como una compañera que estuvo en los pasillos y los talleres, no como una política. Usás 'compañero/a', sos directa, propositiva y apasionada por la educación técnica. Nunca usás lenguaje corporativo ni frío."
   },
   "greeting": {
     "enabled": true,
-    "message": "¡Hola!  Soy *BugMate*, el asistente de atención al cliente de *{company}*.\n\nEstoy acá para ayudarte con cualquier consulta. ¿En qué te puedo ayudar hoy?",
-    "unknownClientName": "👋",
+    "message": "¡Hola, compañero/a! 👋 Soy *Evangelina*, la asistente de *Lista 26 Roja — Dignidad y Trabajo*.\n\nEstamos acá para contarte nuestras propuestas, defenderte los derechos y acompañarte en esta elección. ¿En qué te puedo ayudar?",
+    "unknownClientName": "compañero/a",
     "sessionTimeoutMinutes": 30
   },
   "menu": {
     "message": "Elegí una opción respondiendo con el número:",
-    "invalidChoiceMessage": "No entendí tu respuesta.",
-    "unrecognizedOptionMessage": "Opción no reconocida.",
+    "invalidChoiceMessage": "No entendí tu respuesta. Respondé con el número de la opción.",
+    "unrecognizedOptionMessage": "Opción no reconocida. Escribí el número de lo que querés saber.",
     "options": [
       {
         "id": "1",
-        "label": " Soy cliente (desarrollos a medida)",
-        "conditionalFlowId": "clientFlow",
-        "conditionalFlowStartStep": "askClientName"
+        "label": "📋 Conocer nuestras propuestas",
+        "conditionalFlowId": "propuestasFlow",
+        "conditionalFlowStartStep": "mostrarPropuestas"
       },
       {
         "id": "2",
-        "label": " No soy cliente — tengo una consulta",
-        "conditionalFlowId": "prospectFlow",
-        "conditionalFlowStartStep": "askProspectQuery"
+        "label": "👥 Conocer a la Lista",
+        "conditionalFlowId": "listaFlow",
+        "conditionalFlowStartStep": "mostrarLista"
       },
       {
         "id": "3",
-        "label": " Contactar con atención al cliente",
+        "label": "🗳️ Información para votar (Mi Mesa)",
+        "conditionalFlowId": "votarFlow",
+        "conditionalFlowStartStep": "infoVotar"
+      },
+      {
+        "id": "4",
+        "label": "📱 Seguinos en Instagram",
+        "conditionalFlowId": "instagramFlow",
+        "conditionalFlowStartStep": "mostrarInstagram"
+      },
+      {
+        "id": "5",
+        "label": "✉️ Contactar con la Lista",
         "action": "ESCALATE"
       }
     ]
   },
   "conditionalFlows": {
-    "clientFlow": {
-      "startStep": "askClientName",
+    "propuestasFlow": {
+      "startStep": "mostrarPropuestas",
       "steps": {
-        "askClientName": {
-          "type": "input",
-          "prompt": "Por favor ingresá tu *nombre* o el nombre de tu *empresa* para verificar tu cuenta:",
-          "saveAs": "clientInput",
-          "nextStep": "validateClient"
-        },
-        "validateClient": {
-          "type": "validate",
-          "dataSource": "clients",
-          "inputVar": "clientInput",
-          "onMatch": {
-            "saveAs": "matchedClient",
-            "nextStep": "clientMenu"
-          },
-          "onNoMatch": {
-            "message": "No encontré tu empresa en nuestra base de clientes. Voy a notificar a *{developerName}* para que te contacte a la brevedad. 🙏",
-            "action": "ESCALATE",
-            "notification": " *Cliente no encontrado*\n\n *Teléfono:* {senderPhone}\n *Ingresó:* \"{clientInput}\"\n *Hora:* {timestamp}\n *Ruta:* {flowPath}"
-          }
-        },
-        "clientMenu": {
+        "mostrarPropuestas": {
           "type": "menu",
-          "message": "¡Bienvenido/a, *{matchedClient.name}*! \n Empresa: *{matchedClient.company}*\n\n¿En qué te puedo ayudar hoy?",
+          "message": "Estas son nuestras *5 líneas de acción* concretas, compañero/a. ¿Cuál querés conocer en detalle?",
           "options": [
             {
               "id": "1",
-              "label": " Reportar un error",
-              "nextStep": "errorDescription"
+              "label": "💰 Financiamiento y soberanía educativa",
+              "nextStep": "ejeFinanciamiento"
             },
             {
               "id": "2",
-              "label": " Consultar sobre funcionalidades del sistema",
-              "nextStep": "queryFunctionality"
+              "label": "📚 Actualización académica y formación docente",
+              "nextStep": "ejeAcademico"
             },
             {
               "id": "3",
-              "label": " Errores o problemas comunes",
-              "nextStep": "queryCommonIssues"
+              "label": "⚖️ Condiciones laborales y dignidad docente",
+              "nextStep": "ejeLaborales"
             },
             {
               "id": "4",
-              "label": "Hablar con desarrollo",
-              "action": "ESCALATE",
-              "notification": " *Solicitud de contacto con desarrollo*\n\n *Cliente:* {matchedClient.name}\n *Empresa:* {matchedClient.company}\n *Teléfono:* {senderPhone}\n *Hora:* {timestamp}\n *Ruta:* {flowPath}"
+              "label": "❤️ Bienestar y recreación del afiliado",
+              "nextStep": "ejeBienestar"
+            },
+            {
+              "id": "5",
+              "label": "🏛️ Compromiso político y desarrollo del sector",
+              "nextStep": "ejeCompromiso"
+            },
+            {
+              "id": "6",
+              "label": "🔙 Volver al menú principal",
+              "nextStep": "END"
             }
           ],
-          "invalidMessage": "Por favor elegí una opción del 1 al 4."
+          "invalidMessage": "Respondé con un número del 1 al 6."
         },
-        "errorDescription": {
-          "type": "input",
-          "prompt": "Contame qué está pasando. Describí el error con el mayor detalle posible:\n\n• ¿Qué estabas haciendo cuando ocurrió?\n• ¿Aparece algún mensaje de error?\n• ¿Desde cuándo sucede?",
-          "saveAs": "errorDescription",
-          "nextStep": "errorScreenshot"
-        },
-        "errorScreenshot": {
-          "type": "input",
-          "prompt": "¿Podés enviarme una captura de pantalla del error? Si no tenés, escribí *no tengo*.",
-          "saveAs": "errorScreenshot",
-          "acceptMedia": true,
-          "mediaFallback": "[imagen adjunta]",
-          "nextStep": "errorConfirmation"
-        },
-        "errorConfirmation": {
+        "ejeFinanciamiento": {
           "type": "message",
-          "text": "✅ Perfecto, registré el reporte. Voy a notificar a *{developerName}* para que lo revise a la brevedad. ¡Gracias por avisarnos! 🙏",
-          "action": "NOTIFY_DEVELOPER",
-          "notification": "🐛 *Nuevo reporte de error*\n\n👤 *Cliente:* {matchedClient.name}\n🏢 *Empresa:* {matchedClient.company}\n📱 *Teléfono:* {senderPhone}\n📝 *Descripción:* {errorDescription}\n📎 *Captura:* {errorScreenshot}\n🕐 *Hora:* {timestamp}\n📍 *Ruta:* {flowPath}",
-          "trelloCard": {
-            "listId": "{matchedClient.trelloLists.bugs}",
-            "title": "🐛 [{matchedClient.company}] {errorDescription}",
-            "description": "**Cliente:** {matchedClient.name}\n**Empresa:** {matchedClient.company}\n**Teléfono:** {senderPhone}\n**Descripción:** {errorDescription}\n**Captura:** {errorScreenshot}\n**Hora:** {timestamp}"
-          },
-          "nextStep": "END"
+          "text": "💰 *Eje 01 — Financiamiento y soberanía educativa*\n\nVamos a crear el *Fondo Provincial de Educación Técnica* para que los talleres tengan herramientas, insumos y equipamiento real — no promesas.\n\nEl desfinanciamiento nacional pone en riesgo talleres, equipamiento y cargos. Eso tiene que terminar.\n\n🌐 Conocé más en: https://plataformalista26.vercel.app/",
+          "nextStep": "continuar"
         },
-        "queryFunctionality": {
+        "ejeAcademico": {
+          "type": "message",
+          "text": "📚 *Eje 02 — Actualización académica y formación docente*\n\nImpulsamos la reforma curricular incorporando *IA, robótica y energías renovables*. Con capacitación docente continua con validez ministerial y gestión de becas específicas para los compañeros.\n\nLa educación técnica tiene que estar a la altura del mundo productivo de hoy.\n\n🌐 Conocé más en: https://plataformalista26.vercel.app/",
+          "nextStep": "continuar"
+        },
+        "ejeLaborales": {
+          "type": "message",
+          "text": "⚖️ *Eje 03 — Condiciones laborales y dignidad docente*\n\n✅ Defensa irrestricta del *Decreto 4659/12*\n✅ Revisión de la *RM 5136*\n✅ Remuneración acorde a jornada completa con reconocimiento pedagógico real\n\nCada cargo y cada hora tienen que tener el reconocimiento que merecen. No negociamos derechos.\n\n🌐 Conocé más en: https://plataformalista26.vercel.app/",
+          "nextStep": "continuar"
+        },
+        "ejeBienestar": {
+          "type": "message",
+          "text": "❤️ *Eje 04 — Bienestar y recreación del afiliado*\n\nQuaremos que la AMET también sea un espacio de encuentro real:\n\n🏢 Infraestructura gremial propia\n🏃 Centro deportivo\n🎭 Salón de usos múltiples\n🏥 Convenios de salud integral para cada afiliado y su familia\n\nEl compañero docente se merece más que promesas.\n\n🌐 Conocé más en: https://plataformalista26.vercel.app/",
+          "nextStep": "continuar"
+        },
+        "ejeCompromiso": {
+          "type": "message",
+          "text": "🏛️ *Eje 05 — Compromiso político y desarrollo del sector*\n\n📌 Bolsa de Trabajo Técnica Provincial\n📌 Protocolos de seguridad obligatorios en talleres\n📌 Participación activa en el diseño de políticas públicas educativas\n📌 Convenios con empresas mineras y PYMES locales para prácticas profesionalizantes\n\nNo somos espectadores — somos parte de la solución.\n\n🌐 Conocé más en: https://plataformalista26.vercel.app/",
+          "nextStep": "continuar"
+        },
+        "continuar": {
+          "type": "menu",
+          "message": "¿Querés ver otra propuesta o tenés alguna consulta?",
+          "options": [
+            {
+              "id": "1",
+              "label": "📋 Ver otras propuestas",
+              "nextStep": "mostrarPropuestas"
+            },
+            {
+              "id": "2",
+              "label": "💬 Hacerme una pregunta",
+              "nextStep": "preguntaLibre"
+            },
+            {
+              "id": "3",
+              "label": "🔙 Menú principal",
+              "nextStep": "END"
+            }
+          ],
+          "invalidMessage": "Respondé 1, 2 o 3."
+        },
+        "preguntaLibre": {
           "type": "ai",
-          "inputPrompt": "Contame tu consulta sobre el sistema y voy a buscar la información para ayudarte:",
+          "inputPrompt": "¡Claro! Contame tu consulta y te respondo:",
           "textOnlyMessage": "Por favor escribí tu consulta con texto.",
           "useKnowledge": true,
-          "ragContextInstruction": "Respondé de forma natural y conversacional. Si la información no es suficiente, decí que podés comunicarte con desarrollo.",
+          "ragContextInstruction": "Respondé como Evangelina, una compañera comprometida de Lista 26 Roja. Usá la información sobre las propuestas para responder con precisión.",
           "fallbackToEscalation": true,
-          "noResultMessage": "No encontré información específica sobre eso en mi base de conocimiento. Voy a notificar a *{developerName}* para que te ayude directamente.",
-          "noResultNotification": "❓ *Consulta sin respuesta en base de conocimiento*\n\n👤 *Cliente:* {matchedClient.name}\n🏢 *Empresa:* {matchedClient.company}\n📱 *Teléfono:* {senderPhone}\n💬 *Consulta:* \"{userQuery}\"\n🕐 *Hora:* {timestamp}",
-          "continuePrompt": "¿Hay algo más en lo que pueda ayudarte? Escribí tu consulta o *menú* para volver al inicio.",
+          "noResultMessage": "Esa consulta me la llevo para consultar con la Lista. Voy a notificar a *{developerName}* para que te den una respuesta.",
+          "continuePrompt": "¿Hay algo más en lo que te pueda ayudar? Escribí tu consulta o *menú* para volver al inicio.",
           "saveQueryAs": "userQuery",
           "nextStep": "END"
-        },
-        "queryCommonIssues": {
-          "type": "ai",
-          "inputPrompt": "Describí el problema o error que estás teniendo y voy a buscar si es un problema conocido con solución:",
-          "textOnlyMessage": "Por favor describí el problema con texto.",
-          "useKnowledge": true,
-          "ragContextInstruction": "Buscá si el problema tiene una solución conocida. Si la encontrás, explicá los pasos claramente. Si no, sugerí contactar con desarrollo.",
-          "fallbackToEscalation": false,
-          "continuePrompt": "¿Te ayudó la respuesta? Si necesitás más ayuda escribí tu consulta o *menú* para volver al inicio.",
-          "saveQueryAs": "commonIssueQuery",
-          "nextStep": "END"
         }
       }
     },
-
-    "prospectFlow": {
-      "startStep": "askProspectQuery",
+    "listaFlow": {
+      "startStep": "mostrarLista",
       "steps": {
-        "askProspectQuery": {
-          "type": "input",
-          "prompt": "Entendido. ¿Cuál es tu consulta? Podés escribirla y un miembro de nuestro equipo se va a comunicar con vos a la brevedad:",
-          "saveAs": "prospectQuery",
-          "nextStep": "prospectConfirmation"
-        },
-        "prospectConfirmation": {
+        "mostrarLista": {
           "type": "message",
-          "text": "¡Gracias por tu mensaje! 🙏 Voy a notificar a *{developerName}* para que se comunique con vos a la brevedad.\n\nTe contactamos pronto. ¡Hasta luego! 👋",
-          "action": "NOTIFY_DEVELOPER",
-          "notification": "📩 *Consulta de prospecto / no-cliente*\n\n📱 *Teléfono:* {senderPhone}\n💬 *Consulta:* \"{prospectQuery}\"\n🕐 *Hora:* {timestamp}\n📍 *Ruta:* {flowPath}\n\n_Este usuario NO está en la base de clientes._",
+          "text": "👥 *Lista 26 Roja — Dignidad y Trabajo*\nAMET Regional XIII Salta\n\n*Conducción:*\n1️⃣ *Rene Leonardo Tarifa Duran* — Secretario General\n2️⃣ *Jorge Bruno Cani* — Secretario Adjunto\n3️⃣ *Cristian Maximiliano Raffo* — Relaciones Gremiales\n4️⃣ *Juan Antonio Zenteno* — Administrativo y Actas\n5️⃣ *Rosa Malvina Villegran Martinez* — Prensa y Propaganda\n6️⃣ *Diego Maximiliano Julia* — Finanzas\n7️⃣ *Estela Alejandra Mendez* — Subfinanzas\n8️⃣ *Juan Carlos Valencia Garcia* — Cultura\n9️⃣ *Nestor Juan Perez* — Acción Social\n🔟 *Alejandra Victoria Sanchez* — Secretaria de la Mujer\n\n_Compañeros y compañeras comprometidos con una gestión moderna, democrática y representativa._\n\n🌐 https://plataformalista26.vercel.app/",
+          "nextStep": "detalleLista"
+        },
+        "detalleLista": {
+          "type": "menu",
+          "message": "¿Querés saber más sobre nuestro candidato a Secretario General?",
+          "options": [
+            {
+              "id": "1",
+              "label": "👤 Conocer a Rene Tarifa Duran",
+              "nextStep": "perfilRene"
+            },
+            {
+              "id": "2",
+              "label": "📋 Ver propuestas",
+              "nextStep": "END"
+            },
+            {
+              "id": "3",
+              "label": "🔙 Menú principal",
+              "nextStep": "END"
+            }
+          ],
+          "invalidMessage": "Respondé 1, 2 o 3."
+        },
+        "perfilRene": {
+          "type": "message",
+          "text": "👤 *Rene Leonardo Tarifa Duran*\n_Candidato a Secretario General_\n\nRene encabeza Lista 26 Roja con la convicción de construir una AMET más cercana, más presente y más comprometida con cada compañero docente.\n\n_\"El gremio tiene que estar donde está el docente: en la escuela, en el taller y en la necesidad concreta.\"_\n\n🌐 https://plataformalista26.vercel.app/",
+          "nextStep": "END"
+        }
+      }
+    },
+    "votarFlow": {
+      "startStep": "infoVotar",
+      "steps": {
+        "infoVotar": {
+          "type": "message",
+          "text": "🗳️ *Información para votar — Elecciones AMET 2026*\n\nPara consultar tu establecimiento, número de mesa y dirección podés ingresar tu DNI en nuestra sección *Mi Mesa*:\n\n🌐 https://plataformalista26.vercel.app/\n\nBuscá la sección *\"Mi Mesa\"* en el menú del sitio.\n\n¿Querés ser fiscal de mesa? También podés registrarte desde el sitio. ¡Necesitamos compañeros comprometidos! 💪",
+          "nextStep": "END"
+        }
+      }
+    },
+    "instagramFlow": {
+      "startStep": "mostrarInstagram",
+      "steps": {
+        "mostrarInstagram": {
+          "type": "message",
+          "text": "📱 *Seguinos en Instagram*\n\n👉 @lista26roja\nhttps://www.instagram.com/lista26roja/\n\nAhí subimos novedades, propuestas y el día a día de la campaña. ¡Seguinos y compartí con tus compañeros docentes! 🔴\n\n🌐 Sitio web: https://plataformalista26.vercel.app/",
           "nextStep": "END"
         }
       }
     }
   },
-  "flows": {
-    "reportError": {
-      "type": "guided",
-      "steps": [
-        {
-          "key": "description",
-          "prompt": "Contame qué está pasando. Describí el error lo más detallado que puedas, por ejemplo: ¿qué estabas haciendo cuando ocurrió? ¿aparece algún mensaje de error?"
-        },
-        {
-          "key": "screenshot",
-          "prompt": "¿Podés enviarme una captura de pantalla del error o una foto de la pantalla? Si no tenés, escribí *no tengo*."
-        }
-      ],
-      "noMediaFallback": "No adjuntó captura",
-      "confirmationMessage": "Perfecto, registré el reporte. Voy a notificar a *{developerName}* para que lo revise a la brevedad. ¡Gracias por avisarnos! 🙏",
-      "developerNotification": "🐛 *Nuevo reporte de error*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n📝 *Descripción:* {description}\n📎 *Captura:* {screenshot}"
-    },
-    "queryKnowledge": {
-      "type": "ai",
-      "inputPrompt": "Contame tu consulta y voy a buscar la información para ayudarte:",
-      "textOnlyMessage": "Por favor escribí tu consulta con texto.",
-      "useKnowledge": true,
-      "ragContextInstruction": "Respondé de forma natural y conversacional.",
-      "fallbackToEscalation": true,
-      "noResultMessage": "No encontré información específica sobre eso en mi base de conocimiento. Voy a notificar a *{developerName}* para que te ayude directamente.",
-      "noResultDeveloperNotification": "❓ *Consulta sin respuesta en base de conocimiento*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n💬 *Consulta:* \"{query}\"",
-      "continuePrompt": "¿Hay algo más en lo que pueda ayudarte? Respondé *menú* para ver las opciones o escribí tu consulta."
-    },
-    "querySales": {
-      "type": "ai",
-      "inputPrompt": "¡Claro! Contame qué necesitás saber sobre nuestros servicios o productos:",
-      "textOnlyMessage": "Por favor escribí tu consulta con texto.",
-      "useKnowledge": false,
-      "systemPromptOverride": "Sos BugMate, el asistente de ventas de {company}. Tu objetivo es responder consultas sobre servicios, precios y propuestas. Sé amable, profesional y entusiasta. Si no tenés la información exacta, ofrecé coordinar una reunión con el equipo de ventas. Usá español rioplatense.",
-      "continuePrompt": "¿Tenés alguna otra consulta? Respondé *menú* para ver las opciones."
-    }
-  },
+  "flows": {},
   "ai": {
-    "model": "qwen3:1.7b",
-    "embeddingModel": "nomic-embed-text",
-    "systemPrompt": "Sos BugMate, el asistente de soporte técnico de {company}. Tu objetivo es ayudar a los clientes con dudas y problemas sobre el sistema. Respondé de forma natural y humana, como lo haría una persona real de soporte. Sé empático, claro y conciso. Si no sabés algo con certeza, no inventes — decí que vas a consultarlo. Usá español rioplatense.",
-    "ragMinScore": 0.60,
+    "model": "gemini-2.5-flash",
+    "embeddingModel": "text-embedding-004",
+    "systemPrompt": "Sos Evangelina, la asistente virtual de Lista 26 Roja — Dignidad y Trabajo, la lista gremial de AMET Regional XIII Salta (Asociación de Maestros de Enseñanza Técnica). Hablás como una compañera docente comprometida, cercana y apasionada por la educación técnica salteña. Usás 'compañero/a', sos directa y propositiva. NUNCA inventés información — si no sabés algo, decí que lo vas a consultar con la Lista. Siempre promoví el sitio web https://plataformalista26.vercel.app/ y el Instagram @lista26roja. Los candidatos principales son: Rene Tarifa Duran (Secretario General), Jorge Cani (Adjunto), Cristian Raffo (Relaciones Gremiales). Los cinco ejes son: 1) Fondo Provincial de Educación Técnica, 2) Actualización curricular con IA y robótica, 3) Defensa del Decreto 4659/12 y revisión RM 5136, 4) Bienestar del afiliado, 5) Bolsa de Trabajo Técnica y políticas públicas. Usá español rioplatense/salteño.",
+    "ragMinScore": 0.55,
     "ragTopK": 3,
     "fallbackToEscalation": true,
     "maxHistoryMessages": 10,
@@ -209,35 +221,36 @@
   },
   "humanDelay": {
     "enabled": true,
-    "readingDelayMinMs": 1000,
-    "readingDelayMaxMs": 3500,
-    "minDelayMs": 2000,
-    "maxDelayMs": 12000,
-    "msPerCharacter": 55
+    "readingDelayMinMs": 800,
+    "readingDelayMaxMs": 2500,
+    "minDelayMs": 1500,
+    "maxDelayMs": 10000,
+    "msPerCharacter": 45
   },
   "media": {
     "processImages": true,
     "processAudio": true,
-    "imagePrompt": "Analizá esta imagen en detalle. Si es una captura de pantalla de un sistema, describí qué ves: mensajes de error, botones, formularios, datos. Si es una foto, describí el contenido relevante.",
+    "imagePrompt": "Analizá esta imagen. Si es material de campaña o gremial, describí el contenido visible.",
     "audioPrompt": "Transcribí exactamente el mensaje de audio en español.",
-    "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo directamente. ¿Podés describirme con texto qué necesitás?"
+    "unsupportedMessage": "Recibí tu {mediaType}, pero por ahora no puedo procesarlo. ¿Podés escribirme con texto lo que necesitás?"
   },
   "trello": {
-    "enabled": true
+    "enabled": false
   },
   "escalation": {
     "keywords": [
       "hablar con alguien",
-      "hablar con el desarrollador",
-      "soporte humano",
+      "hablar con la lista",
+      "quiero contactar",
       "quiero hablar con una persona",
-      "necesito ayuda humana",
-      "hablar con una persona real",
-      "hablar con ignacio",
-      "comunicarme con el programador"
+      "hablar con oscar",
+      "hablar con rene",
+      "comunicarme con la conducción",
+      "soporte humano",
+      "necesito ayuda"
     ],
-    "clientMessage": "Entendido. Voy a notificar a *{developerName}* para que se comunique con vos a la brevedad. Por favor aguardá su respuesta. 🙏",
-    "developerNotification": "🔔 *BugMate — Solicitud de soporte humano*\n\n📱 *Cliente:* {clientName} ({clientPhone})\n💬 *Mensaje:* \"{message}\"",
-    "alreadyEscalatedMessage": "Tu consulta ya fue enviada a *{developerName}*. En cuanto pueda se va a comunicar con vos. 🙏"
+    "clientMessage": "Entendido, compañero/a. Voy a notificar a la Lista para que se comuniquen con vos a la brevedad. ¡Gracias por el apoyo! 🔴",
+    "developerNotification": "🔔 *Evangelina — Consulta de compañero/a*\n\n📱 *Teléfono:* {clientPhone}\n💬 *Mensaje:* \"{message}\"",
+    "alreadyEscalatedMessage": "Tu consulta ya fue enviada a la Lista. En cuanto puedan se van a comunicar con vos. ¡Gracias por acompañarnos! 🔴"
   }
 }

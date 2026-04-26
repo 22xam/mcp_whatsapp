@@ -1,3 +1,6 @@
+// Fix TLS certificate issues on Windows with Node.js native fetch
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
