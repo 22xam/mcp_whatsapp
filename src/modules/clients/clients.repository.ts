@@ -7,6 +7,7 @@ interface ClientRow {
   name: string;
   company: string;
   systems_json: string;
+  tags_json: string;
   knowledge_docs_json: string;
   trello_lists_json: string;
   notes: string | null;
@@ -37,14 +38,15 @@ export class ClientsRepository {
     this.database.connection
       .prepare(`
         INSERT INTO clients (
-          phone, name, company, systems_json, knowledge_docs_json,
+          phone, name, company, systems_json, tags_json, knowledge_docs_json,
           trello_lists_json, notes, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(phone) DO UPDATE SET
           name = excluded.name,
           company = excluded.company,
           systems_json = excluded.systems_json,
+          tags_json = excluded.tags_json,
           knowledge_docs_json = excluded.knowledge_docs_json,
           trello_lists_json = excluded.trello_lists_json,
           notes = excluded.notes,
@@ -55,6 +57,7 @@ export class ClientsRepository {
         client.name,
         client.company ?? '',
         JSON.stringify(client.systems ?? []),
+        JSON.stringify(client.tags ?? []),
         JSON.stringify(client.knowledgeDocs ?? []),
         JSON.stringify(client.trelloLists ?? {}),
         client.notes ?? null,
@@ -95,6 +98,7 @@ export class ClientsRepository {
       name: row.name,
       company: row.company,
       systems: this.parseJson<string[]>(row.systems_json, []),
+      tags: this.parseJson<string[]>(row.tags_json, []),
       knowledgeDocs: this.parseJson<string[]>(row.knowledge_docs_json, []),
       trelloLists: this.parseJson<Record<string, string>>(row.trello_lists_json, {}),
       notes: row.notes ?? undefined,

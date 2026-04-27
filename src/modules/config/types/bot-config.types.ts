@@ -99,6 +99,9 @@ export interface AiConfig {
   maxHistoryMessages: number;
   /** Whether to use the knowledge base (RAG) when in full AI mode */
   useKnowledge?: boolean;
+  memoryEnabled?: boolean;
+  memoryRecentMessages?: number;
+  memorySummaryThreshold?: number;
 }
 
 export interface HumanDelayConfig {
@@ -159,6 +162,7 @@ export interface ClientConfig {
   name: string;
   company: string;
   systems: string[];
+  tags?: string[];
   notes?: string;
   /** Knowledge doc filenames this client is allowed to query (e.g. ["cima-knowledge.md"]) */
   knowledgeDocs?: string[];

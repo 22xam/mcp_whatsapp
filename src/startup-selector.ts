@@ -300,9 +300,334 @@ function patchBotConfigModel(model: string, embeddingModel: string) {
   }
 }
 
+// ─── Campaign configurator ────────────────────────────────────────────────────
+
+interface CampaignEntry {
+  id: string;
+  name: string;
+  enabled: boolean;
+  messageMode?: string;
+  template?: string;
+  aiPrompt?: string;
+  systemPrompt?: string;
+  [key: string]: unknown;
+}
+
+function readCampaigns(): CampaignEntry[] {
+  const p = path.join(process.cwd(), 'config', 'campaigns.json');
+  if (!fs.existsSync(p)) return [];
+  try { return JSON.parse(fs.readFileSync(p, 'utf-8')) as CampaignEntry[]; }
+  catch { return []; }
+}
+
+function writeCampaigns(campaigns: CampaignEntry[]): void {
+  const p = path.join(process.cwd(), 'config', 'campaigns.json');
+  fs.writeFileSync(p, JSON.stringify(campaigns, null, 2), 'utf-8');
+}
+
+function resolveMode(c: CampaignEntry): string {
+  if (c.messageMode) return c.messageMode;
+  if (c.template) return 'template';
+  return 'ai';
+}
+
+async function configureCampaigns(rl: readline.Interface): Promise<void> {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const campaigns = readCampaigns();
+
+    header('📣 Configuración de campañas');
+    if (campaigns.length === 0) {
+      warn('No hay campañas en config/campaigns.json');
+      return;
+    }
+
+    campaigns.forEach((c, i) => {
+      const mode = resolveMode(c);
+      const estado = c.enabled ? `${GREEN}activa${RESET}` : `${RED}inactiva${RESET}`;
+      const modeLabel = mode === 'template' ? `${YELLOW}Fijo${RESET}` : `${CYAN}IA${RESET}`;
+      info(`  ${BOLD}${i + 1}.${RESET} ${c.name}  [${estado}]  modo: ${modeLabel}`);
+      dim(`       id: ${c.id}`);
+    });
+    info(`  ${BOLD}${campaigns.length + 1}.${RESET} Volver al menú principal`);
+
+    const choice = await askNumber(rl, `\n  ${CYAN}Seleccioná una campaña (1-${campaigns.length + 1}): ${RESET}`, campaigns.length + 1);
+    if (choice === campaigns.length + 1) return;
+
+    const campaign = campaigns[choice - 1];
+    await editCampaign(rl, campaigns, campaign);
+  }
+}
+
+async function editCampaign(rl: readline.Interface, all: CampaignEntry[], campaign: CampaignEntry): Promise<void> {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const mode = resolveMode(campaign);
+    const estado = campaign.enabled ? `${GREEN}activa${RESET}` : `${RED}inactiva${RESET}`;
+    const modeLabel = mode === 'template' ? `${YELLOW}Fijo (template)${RESET}` : `${CYAN}IA (generado)${RESET}`;
+
+    header(`✏️  ${campaign.name}`);
+    dim(`     id: ${campaign.id}`);
+    info('');
+    info(`  ${BOLD}1.${RESET} Estado          → ${estado}`);
+    info(`  ${BOLD}2.${RESET} Modo de mensaje → ${modeLabel}`);
+
+    if (mode === 'template') {
+      const preview = (campaign.template ?? '').slice(0, 80).replace(/\n/g, '↵');
+      info(`  ${BOLD}3.${RESET} Editar mensaje fijo`);
+      dim(`       ${preview}${(campaign.template ?? '').length > 80 ? '…' : ''}`);
+    } else {
+      const preview = (campaign.aiPrompt ?? '').slice(0, 80).replace(/\n/g, '↵');
+      info(`  ${BOLD}3.${RESET} Editar prompt de usuario (IA)`);
+      dim(`       ${preview}${(campaign.aiPrompt ?? '').length > 80 ? '…' : ''}`);
+      info(`  ${BOLD}4.${RESET} Editar prompt de sistema (IA)`);
+      const sysPreview = (campaign.systemPrompt ?? '').slice(0, 60).replace(/\n/g, '↵');
+      dim(`       ${sysPreview}${(campaign.systemPrompt ?? '').length > 60 ? '…' : ''}`);
+    }
+
+    const maxOpt = mode === 'template' ? 4 : 5;
+    info(`  ${BOLD}${maxOpt - 1}.${RESET} Guardar y volver`);
+    info(`  ${BOLD}${maxOpt}.${RESET} Volver sin guardar`);
+
+    const opt = await askNumber(rl, `\n  ${CYAN}Opción (1-${maxOpt}): ${RESET}`, maxOpt);
+
+    if (opt === maxOpt) return; // volver sin guardar
+
+    if (opt === maxOpt - 1) {
+      // guardar
+      const idx = all.findIndex((c) => c.id === campaign.id);
+      if (idx !== -1) all[idx] = campaign;
+      writeCampaigns(all);
+      ok(`Campaña "${campaign.name}" guardada.`);
+      return;
+    }
+
+    if (opt === 1) {
+      // toggle estado
+      campaign.enabled = !campaign.enabled;
+      ok(`Estado cambiado a: ${campaign.enabled ? 'activa' : 'inactiva'}`);
+    }
+
+    if (opt === 2) {
+      // toggle modo
+      const newMode = mode === 'template' ? 'ai' : 'template';
+      campaign.messageMode = newMode;
+      ok(`Modo cambiado a: ${newMode}`);
+      if (newMode === 'template' && !campaign.template) {
+        warn('No tenés mensaje fijo definido. Usá la opción 3 para escribirlo.');
+      }
+    }
+
+    if (opt === 3) {
+      if (mode === 'template') {
+        await editMultiline(rl, campaign, 'template', 'mensaje fijo');
+      } else {
+        await editMultiline(rl, campaign, 'aiPrompt', 'prompt de usuario (IA)');
+      }
+    }
+
+    if (opt === 4 && mode === 'ai') {
+      await editMultiline(rl, campaign, 'systemPrompt', 'prompt de sistema (IA)');
+    }
+  }
+}
+
+async function editMultiline(
+  rl: readline.Interface,
+  campaign: CampaignEntry,
+  field: 'template' | 'aiPrompt' | 'systemPrompt',
+  label: string,
+): Promise<void> {
+  const current = campaign[field] ?? '';
+  header(`📝 Editando: ${label}`);
+  info('Texto actual:');
+  print('');
+  current.split('\n').forEach((line) => dim(`  ${line}`));
+  print('');
+  info('Opciones:');
+  info('  1. Reemplazar completamente');
+  info('  2. Dejar sin cambios');
+  print('');
+
+  const opt = await askNumber(rl, `  ${CYAN}Opción (1-2): ${RESET}`, 2);
+  if (opt === 2) return;
+
+  print('');
+  warn('Escribí el nuevo texto. Usá \\n para saltos de línea. Terminá con una línea que diga solo: END');
+  warn('Para dividir en dos mensajes separados, usá una línea que diga solo: ---');
+  print('');
+
+  const lines: string[] = [];
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const line = await ask(rl, '');
+    if (line === 'END') break;
+    lines.push(line);
+  }
+
+  // Join preserving --- separators and convert \n literals
+  const raw = lines.join('\n').replace(/\\n/g, '\n');
+  campaign[field] = raw;
+  ok(`${label} actualizado (${raw.length} caracteres).`);
+}
+
+// ─── Anti-spam configurator ───────────────────────────────────────────────────
+
+interface AntispamFile {
+  delayMin_ms: number;
+  delayMax_ms: number;
+  delayFirstContact_ms: number;
+  maxPerDay: number;
+  maxPerHour: number;
+  pauseAfterBatch: number;
+  batchSize: number;
+  sendWindowStart: string;
+  sendWindowEnd: string;
+  maxConsecutiveDays: number;
+  warmupMode: boolean;
+  warmupSchedule: number[];
+  [key: string]: unknown;
+}
+
+const ANTISPAM_DEFAULTS: AntispamFile = {
+  delayMin_ms: 4000, delayMax_ms: 9000, delayFirstContact_ms: 3000,
+  maxPerDay: 200, maxPerHour: 80,
+  pauseAfterBatch: 300000, batchSize: 30,
+  sendWindowStart: '09:00', sendWindowEnd: '20:00',
+  maxConsecutiveDays: 3, warmupMode: false,
+  warmupSchedule: [20, 36, 65, 117, 210, 378, 680],
+};
+
+function readAntispam(): AntispamFile {
+  const p = path.join(process.cwd(), 'config', 'antispam.json');
+  if (!fs.existsSync(p)) return { ...ANTISPAM_DEFAULTS };
+  try {
+    const raw = JSON.parse(fs.readFileSync(p, 'utf-8')) as AntispamFile;
+    // quitar claves de comentarios que empiezan con _
+    const clean: AntispamFile = { ...ANTISPAM_DEFAULTS };
+    for (const [k, v] of Object.entries(raw)) {
+      if (!k.startsWith('_')) (clean as Record<string, unknown>)[k] = v;
+    }
+    return clean;
+  } catch { return { ...ANTISPAM_DEFAULTS }; }
+}
+
+function writeAntispam(cfg: AntispamFile): void {
+  const p = path.join(process.cwd(), 'config', 'antispam.json');
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2), 'utf-8');
+}
+
+function msToSec(ms: number): string { return `${(ms / 1000).toFixed(1)}s`; }
+function msToMin(ms: number): string { return `${(ms / 60000).toFixed(1)}min`; }
+
+async function configureAntispam(rl: readline.Interface): Promise<void> {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const cfg = readAntispam();
+
+    header('🛡️  Configuración Anti-Spam');
+    info('');
+    info(`  ${BOLD}1.${RESET} Delay mínimo entre mensajes   → ${GREEN}${msToSec(cfg.delayMin_ms)}${RESET}  ${DIM}(rec: 4-5s)${RESET}`);
+    info(`  ${BOLD}2.${RESET} Delay máximo entre mensajes   → ${GREEN}${msToSec(cfg.delayMax_ms)}${RESET}  ${DIM}(rec: 8-12s)${RESET}`);
+    info(`  ${BOLD}3.${RESET} Delay extra primer contacto   → ${GREEN}${msToSec(cfg.delayFirstContact_ms)}${RESET}  ${DIM}(se suma al delay normal)${RESET}`);
+    info('');
+    info(`  ${BOLD}4.${RESET} Máximo mensajes por día       → ${YELLOW}${cfg.maxPerDay}${RESET}  ${DIM}(rec: ≤200 cuenta personal)${RESET}`);
+    info(`  ${BOLD}5.${RESET} Máximo mensajes por hora      → ${YELLOW}${cfg.maxPerHour}${RESET}  ${DIM}(rec: ≤80)${RESET}`);
+    info('');
+    info(`  ${BOLD}6.${RESET} Pausa larga cada N mensajes   → ${CYAN}${cfg.batchSize} msgs → pausa ${msToMin(cfg.pauseAfterBatch)}${RESET}  ${DIM}(simula descanso humano)${RESET}`);
+    info('');
+    info(`  ${BOLD}7.${RESET} Ventana de envío              → ${CYAN}${cfg.sendWindowStart} a ${cfg.sendWindowEnd}${RESET}  ${DIM}(fuera de ese horario no envía)${RESET}`);
+    info('');
+    info(`  ${BOLD}8.${RESET} Modo calentamiento (warmup)   → ${cfg.warmupMode ? `${GREEN}activado${RESET}` : `${RED}desactivado${RESET}`}  ${DIM}(límites progresivos para números nuevos)${RESET}`);
+    info('');
+    info(`  ${BOLD}9.${RESET} Volver al menú principal`);
+    info('');
+    warn('  Cambios se guardan inmediatamente en config/antispam.json');
+
+    const opt = await askNumber(rl, `\n  ${CYAN}Opción (1-9): ${RESET}`, 9);
+    if (opt === 9) return;
+
+    if (opt === 1) {
+      const v = await ask(rl, `  ${CYAN}Delay mínimo en segundos [actual: ${cfg.delayMin_ms / 1000}]: ${RESET}`);
+      const n = parseFloat(v);
+      if (!isNaN(n) && n >= 1.5) { cfg.delayMin_ms = Math.round(n * 1000); writeAntispam(cfg); ok(`delayMin_ms → ${cfg.delayMin_ms}ms`); }
+      else warn('Mínimo permitido: 1.5 segundos (bajo ese valor WhatsApp detecta bots)');
+    }
+    if (opt === 2) {
+      const v = await ask(rl, `  ${CYAN}Delay máximo en segundos [actual: ${cfg.delayMax_ms / 1000}]: ${RESET}`);
+      const n = parseFloat(v);
+      if (!isNaN(n) && n >= cfg.delayMin_ms / 1000) { cfg.delayMax_ms = Math.round(n * 1000); writeAntispam(cfg); ok(`delayMax_ms → ${cfg.delayMax_ms}ms`); }
+      else warn('El máximo debe ser mayor o igual al mínimo');
+    }
+    if (opt === 3) {
+      const v = await ask(rl, `  ${CYAN}Delay extra primer contacto en segundos [actual: ${cfg.delayFirstContact_ms / 1000}]: ${RESET}`);
+      const n = parseFloat(v);
+      if (!isNaN(n) && n >= 0) { cfg.delayFirstContact_ms = Math.round(n * 1000); writeAntispam(cfg); ok(`delayFirstContact_ms → ${cfg.delayFirstContact_ms}ms`); }
+      else warn('Valor inválido');
+    }
+    if (opt === 4) {
+      const v = await ask(rl, `  ${CYAN}Máximo por día [actual: ${cfg.maxPerDay}] (recomendado ≤200): ${RESET}`);
+      const n = parseInt(v, 10);
+      if (!isNaN(n) && n > 0) {
+        if (n > 300) warn(`⚠️  Más de 300/día en cuenta personal aumenta riesgo de ban.`);
+        cfg.maxPerDay = n; writeAntispam(cfg); ok(`maxPerDay → ${n}`);
+      } else warn('Valor inválido');
+    }
+    if (opt === 5) {
+      const v = await ask(rl, `  ${CYAN}Máximo por hora [actual: ${cfg.maxPerHour}] (recomendado ≤80): ${RESET}`);
+      const n = parseInt(v, 10);
+      if (!isNaN(n) && n > 0) { cfg.maxPerHour = n; writeAntispam(cfg); ok(`maxPerHour → ${n}`); }
+      else warn('Valor inválido');
+    }
+    if (opt === 6) {
+      const bs = await ask(rl, `  ${CYAN}Mensajes por batch [actual: ${cfg.batchSize}]: ${RESET}`);
+      const bsN = parseInt(bs, 10);
+      const ps = await ask(rl, `  ${CYAN}Pausa post-batch en minutos [actual: ${cfg.pauseAfterBatch / 60000}]: ${RESET}`);
+      const psN = parseFloat(ps);
+      if (!isNaN(bsN) && bsN > 0 && !isNaN(psN) && psN > 0) {
+        cfg.batchSize = bsN; cfg.pauseAfterBatch = Math.round(psN * 60000);
+        writeAntispam(cfg); ok(`batchSize → ${bsN}, pauseAfterBatch → ${cfg.pauseAfterBatch}ms`);
+      } else warn('Valores inválidos');
+    }
+    if (opt === 7) {
+      const s = await ask(rl, `  ${CYAN}Hora inicio (HH:MM) [actual: ${cfg.sendWindowStart}]: ${RESET}`);
+      const e = await ask(rl, `  ${CYAN}Hora fin   (HH:MM) [actual: ${cfg.sendWindowEnd}]: ${RESET}`);
+      if (/^\d{2}:\d{2}$/.test(s) && /^\d{2}:\d{2}$/.test(e)) {
+        cfg.sendWindowStart = s; cfg.sendWindowEnd = e;
+        writeAntispam(cfg); ok(`Ventana → ${s} a ${e}`);
+      } else warn('Formato inválido, usá HH:MM (ej: 09:00)');
+    }
+    if (opt === 8) {
+      cfg.warmupMode = !cfg.warmupMode;
+      writeAntispam(cfg);
+      ok(`Warmup mode → ${cfg.warmupMode ? 'activado' : 'desactivado'}`);
+      if (cfg.warmupMode) {
+        info('');
+        info('  Plan de calentamiento:');
+        cfg.warmupSchedule.forEach((limit, day) =>
+          dim(`    Día ${day + 1}: máx ${limit} mensajes`)
+        );
+      }
+    }
+
+    print('');
+  }
+}
+
 // ─── Main selector ────────────────────────────────────────────────────────────
 
 export async function runStartupSelector(): Promise<void> {
+  const skipSelector =
+    process.env['BOT_OSCAR_SKIP_STARTUP_SELECTOR'] === '1' ||
+    process.env['BOT_OSCAR_STARTUP_SELECTOR'] === 'false' ||
+    process.env['CI'] === 'true' ||
+    !process.stdin.isTTY;
+
+  if (skipSelector) {
+    dim('Selector de proveedor IA omitido; usando la configuración actual.');
+    return;
+  }
+
   banner();
 
   const env = readEnv();
@@ -314,28 +639,49 @@ export async function runStartupSelector(): Promise<void> {
     } catch { return '—'; }
   })();
 
-  info(`Proveedor actual: ${BOLD}${currentProvider}${RESET}  |  Modelo: ${BOLD}${currentModel}${RESET}`);
-  print('');
-
-  const providers = ['Gemini (Google)', 'Ollama (local)', 'OpenRouter', 'Continuar sin cambios'];
-  providers.forEach((p, i) => {
-    const isCurrent =
-      (i === 0 && currentProvider === 'gemini') ||
-      (i === 1 && currentProvider === 'ollama') ||
-      (i === 2 && currentProvider === 'openrouter');
-    info(`  ${BOLD}${i + 1}.${RESET} ${p}${isCurrent ? ` ${GREEN}← actual${RESET}` : ''}`);
-  });
-
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   try {
-    const choice = await askNumber(rl, `\n  ${CYAN}Seleccioná una opción (1-4): ${RESET}`, 4);
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      info(`Proveedor actual: ${BOLD}${currentProvider}${RESET}  |  Modelo: ${BOLD}${currentModel}${RESET}`);
+      print('');
 
-    if (choice === 1) await configureGemini(rl, env);
-    else if (choice === 2) await configureOllama(rl, env);
-    else if (choice === 3) await configureOpenRouter(rl, env);
-    else {
-      ok(`Continuando con ${currentProvider} / ${currentModel}`);
+      const options = [
+        'Configurar proveedor IA',
+        'Configurar campañas',
+        'Configurar Anti-Spam',
+        'Iniciar bot',
+      ];
+      options.forEach((p, i) => info(`  ${BOLD}${i + 1}.${RESET} ${p}`));
+
+      const choice = await askNumber(rl, `\n  ${CYAN}Seleccioná una opción (1-${options.length}): ${RESET}`, options.length);
+
+      if (choice === 1) {
+        // IA provider submenu
+        print('');
+        const providers = ['Gemini (Google)', 'Ollama (local)', 'OpenRouter', 'Volver'];
+        providers.forEach((p, i) => {
+          const isCurrent =
+            (i === 0 && currentProvider === 'gemini') ||
+            (i === 1 && currentProvider === 'ollama') ||
+            (i === 2 && currentProvider === 'openrouter');
+          info(`  ${BOLD}${i + 1}.${RESET} ${p}${isCurrent ? ` ${GREEN}← actual${RESET}` : ''}`);
+        });
+        const pChoice = await askNumber(rl, `\n  ${CYAN}Proveedor (1-4): ${RESET}`, 4);
+        if (pChoice === 1) await configureGemini(rl, env);
+        else if (pChoice === 2) await configureOllama(rl, env);
+        else if (pChoice === 3) await configureOpenRouter(rl, env);
+      } else if (choice === 2) {
+        await configureCampaigns(rl);
+      } else if (choice === 3) {
+        await configureAntispam(rl);
+      } else {
+        ok(`Iniciando con ${currentProvider} / ${currentModel}`);
+        break;
+      }
+
+      print('');
     }
   } finally {
     rl.close();

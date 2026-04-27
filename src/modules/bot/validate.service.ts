@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigLoaderService } from '../config/config-loader.service';
+import { ClientsService } from '../clients/clients.service';
 import type { ClientConfig } from '../config/types/bot-config.types';
 import type { ValidateDataSource } from '../config/types/conditional-flow.types';
 
 @Injectable()
 export class ValidateService {
-  constructor(private readonly configLoader: ConfigLoaderService) {}
+  constructor(private readonly clientsService: ClientsService) {}
 
   /**
    * Validates a user input string against the specified data source.
@@ -24,7 +24,7 @@ export class ValidateService {
 
   private validateClient(input: string): ClientConfig | null {
     const normalized = this.normalize(input);
-    const clients = this.configLoader.clients;
+    const clients = this.clientsService.findAll();
 
     // 1. Exact phone match
     const byPhone = clients.find((c) => {

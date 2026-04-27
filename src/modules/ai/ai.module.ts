@@ -8,9 +8,10 @@ import { RagContextService } from './rag-context.service';
 import { AI_PROVIDER, EMBEDDING_PROVIDER } from '../core/tokens/injection-tokens';
 import { AppConfigModule } from '../config/config.module';
 import { BotConfigService } from '../config/bot-config.service';
+import { SessionModule } from '../session/session.module';
 
 @Module({
-  imports: [HttpModule, AppConfigModule],
+  imports: [HttpModule, AppConfigModule, SessionModule],
   providers: [
     GeminiProvider,
     OllamaProvider,

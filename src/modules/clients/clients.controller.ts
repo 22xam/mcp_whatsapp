@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import type { ClientConfig } from '../config/types/bot-config.types';
 import { ClientsService } from './clients.service';
 
@@ -7,8 +7,8 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Get()
-  findAll() {
-    return this.clientsService.findAll();
+  findAll(@Query('q') q?: string, @Query('tag') tag?: string, @Query('system') system?: string) {
+    return this.clientsService.search({ q, tag, system });
   }
 
   @Get(':phone')
@@ -29,6 +29,7 @@ export class ClientsController {
       name: body.name ?? current?.name ?? '',
       company: body.company ?? current?.company ?? '',
       systems: body.systems ?? current?.systems ?? [],
+      tags: body.tags ?? current?.tags ?? [],
       knowledgeDocs: body.knowledgeDocs ?? current?.knowledgeDocs ?? [],
       trelloLists: body.trelloLists ?? current?.trelloLists ?? {},
       notes: body.notes ?? current?.notes,
@@ -42,12 +43,12 @@ export class ClientsController {
   }
 
   @Post('import/preview')
-  importPreview(@Body() body: { clients: ClientConfig[] }) {
-    return this.clientsService.importPreview(body.clients ?? []);
+  importPreview(@Body() body: { clients?: ClientConfig[]; csv?: string }) {
+    return this.clientsService.importPreview(body.clients ?? this.clientsService.parseCsv(body.csv ?? ''));
   }
 
   @Post('import/commit')
-  importCommit(@Body() body: { clients: ClientConfig[] }) {
-    return this.clientsService.importCommit(body.clients ?? []);
+  importCommit(@Body() body: { clients?: ClientConfig[]; csv?: string }) {
+    return this.clientsService.importCommit(body.clients ?? this.clientsService.parseCsv(body.csv ?? ''));
   }
 }

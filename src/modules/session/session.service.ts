@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { ConversationSession, ConversationState, FlowData } from './session.types';
 import { ConfigLoaderService } from '../config/config-loader.service';
+import { ClientsService } from '../clients/clients.service';
+import { ConversationMemoryService } from './conversation-memory.service';
 
 export interface SessionSummary {
   senderId: string;
@@ -18,7 +20,11 @@ export class SessionService {
   private readonly sessions = new Map<string, ConversationSession>();
   private readonly startedAt = new Date();
 
-  constructor(private readonly configLoader: ConfigLoaderService) {
+  constructor(
+    private readonly configLoader: ConfigLoaderService,
+    private readonly clientsService: ClientsService,
+    private readonly memory: ConversationMemoryService,
+  ) {
     // Clean up expired sessions every 5 minutes
     setInterval(() => this.cleanExpired(), 5 * 60 * 1000);
   }
@@ -40,7 +46,7 @@ export class SessionService {
       this.logger.debug(`Session expired for ${senderId}`);
     }
 
-    const client = this.configLoader.findClient(senderId);
+    const client = this.clientsService.findByPhone(senderId) ?? this.configLoader.findClient(senderId);
     const session: ConversationSession = {
       senderId,
       clientName: client?.name ?? this.configLoader.botConfig.greeting.unknownClientName,
@@ -142,6 +148,7 @@ export class SessionService {
 
     const maxHistory = this.configLoader.botConfig.ai.maxHistoryMessages;
     session.history.push({ role, content });
+    this.memory.record(senderId, role, content);
 
     if (session.history.length > maxHistory * 2) {
       session.history = session.history.slice(-maxHistory * 2);

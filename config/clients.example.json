@@ -4,6 +4,7 @@
     "name": "María García",
     "company": "Empresa Ejemplo S.A.",
     "systems": ["Sistema de Facturación"],
+    "tags": ["cliente-activo", "facturacion"],
     "knowledgeDocs": ["empresa-ejemplo-knowledge.md"],
     "trelloLists": {
       "bugs": "ID_DE_COLUMNA_BUGS_DE_ESTE_CLIENTE",
@@ -16,6 +17,7 @@
     "name": "Carlos López",
     "company": "Otra Empresa S.R.L.",
     "systems": ["Sistema de Gestión"],
+    "tags": ["prospecto", "gestion"],
     "knowledgeDocs": ["otra-empresa-knowledge.md"],
     "trelloLists": {
       "bugs": "ID_DE_COLUMNA_BUGS_DE_ESTE_CLIENTE",

@@ -9,6 +9,7 @@ import { BotConfigService } from '../../config/bot-config.service';
 import { SessionService } from '../../session/session.service';
 import { TrelloService } from '../../trello/trello.service';
 import { OptOutService } from '../../opt-out/opt-out.service';
+import { MessageStoreService } from '../message-store.service';
 
 @Injectable()
 export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
@@ -16,6 +17,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   private readonly logger = new Logger(WhatsAppAdapter.name);
   private client: Client;
   private readyAt: number | null = null;
+  private readonly enabled = process.env['WHATSAPP_ENABLED'] !== 'false';
 
   /** Recipients the bot is currently sending to — message_create events for these are ignored */
   private readonly botSendingTo = new Set<string>();
@@ -35,9 +37,14 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
     private readonly sessionService: SessionService,
     private readonly trelloService: TrelloService,
     private readonly optOutService: OptOutService,
+    private readonly messageStore: MessageStoreService,
   ) {
+    const sessionId = process.env['WHATSAPP_SESSION_ID'];
     this.client = new Client({
-      authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+      authStrategy: new LocalAuth({
+        dataPath: './.wwebjs_auth',
+        clientId: sessionId,
+      }),
       puppeteer: {
         headless: true,
         executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -47,10 +54,18 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    if (!this.enabled) {
+      this.logger.warn('WHATSAPP_ENABLED=false — skipping WhatsApp adapter initialization');
+      return;
+    }
     await this.initialize();
   }
 
   async initialize(): Promise<void> {
+    if (!this.enabled) {
+      this.logger.warn('WHATSAPP_ENABLED=false — WhatsApp adapter disabled');
+      return;
+    }
     this.logger.log('Initializing WhatsApp adapter...');
 
     this.client.on('qr', (qr) => {
@@ -103,6 +118,12 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
       const sent = await this.client.sendMessage(message.recipientId, message.text);
       this.markBotSentMessage(message.recipientId, message.text, sent);
       this.logger.debug(`Sent to ${message.recipientId}`);
+      this.messageStore.push({
+        direction: 'out',
+        senderId: message.recipientId,
+        text: message.text,
+        timestamp: Date.now(),
+      });
     } catch (error) {
       this.logger.error(`Failed to send to ${message.recipientId}: ${(error as Error).message}`);
       throw error;
@@ -224,7 +245,8 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
     if (text === '!ayuda') {
       const trelloStatus = this.trelloService.isEnabled ? '✅ conectado' : '❌ no configurado';
       const help = [
-        '🤖 *BugMate — Comandos disponibles*\n',
+        '🤖 *BOT-Oscar — Comandos disponibles*',
+        '',
         '*📊 Información*',
         '`!estado` — Estado del bot: uptime, IA, sesiones activas, senders pausados',
         '`!sesiones` — Lista sesiones activas con flujo y paso actual',
@@ -269,7 +291,8 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
           : '  Ninguno';
 
       const statusMsg = [
-        '📊 *Estado del bot*\n',
+        '📊 *Estado del bot*',
+        '',
         `⏱️ *Uptime:* ${uptime}`,
         `🤖 *Proveedor IA:* ${provider}`,
         `👥 *Sesiones activas:* ${sessions.length}`,
@@ -492,6 +515,16 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
     this.logger.debug(
       `Incoming [${incoming.mediaType ?? 'text'}] from ${incoming.senderId}: "${(incoming.text || '').slice(0, 60)}"`,
     );
+
+    const contact = await message.getContact().catch(() => null);
+    this.messageStore.push({
+      direction: 'in',
+      senderId: incoming.senderId,
+      senderName: contact?.pushname || contact?.name || undefined,
+      text: incoming.text,
+      mediaType: incoming.mediaType,
+      timestamp: Date.now(),
+    });
 
     try {
       await this.botService.handleMessage(incoming, this);

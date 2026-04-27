@@ -9,6 +9,7 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { ConditionalFlowService } from './conditional-flow.service';
 import type { ConversationSession } from '../session/session.types';
 import type { AiFlow, GuidedFlow } from '../config/types/bot-config.types';
+import { AiConversationService } from '../ai/ai-conversation.service';
 
 @Injectable()
 export class BotService {
@@ -21,6 +22,7 @@ export class BotService {
     private readonly sessionService: SessionService,
     private readonly knowledgeService: KnowledgeService,
     private readonly conditionalFlowService: ConditionalFlowService,
+    private readonly aiConversation: AiConversationService,
   ) {}
 
   async handleMessage(incoming: IncomingMessage, adapter: MessageAdapter): Promise<void> {
@@ -315,24 +317,25 @@ export class BotService {
 
     const fallbackToEscalation = flow.fallbackToEscalation ?? ai.fallbackToEscalation;
 
-    let knowledgeResult: { content: string } | null = null;
-    if (flow.useKnowledge) {
-      knowledgeResult = await this.knowledgeService.search(query);
-    }
+    const systemPrompt = this.configLoader.interpolate(
+      flow.systemPromptOverride ?? ai.systemPrompt,
+      { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
+    );
 
-    if (knowledgeResult) {
-      const baseSystemPrompt = this.configLoader.interpolate(
-        flow.systemPromptOverride ?? ai.systemPrompt,
-        { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
-      );
-      const systemPrompt =
-        `${baseSystemPrompt}\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---\n` +
-        (flow.ragContextInstruction ?? '');
+    const response = await this.aiConversation.generateResponse({
+      senderId: session.senderId,
+      prompt: query,
+      systemPrompt,
+      history: session.history.slice(0, -1),
+      useKnowledge: flow.useKnowledge,
+      ragContextInstruction: flow.ragContextInstruction,
+    });
 
-      const response = await this.ai.generate({ prompt: query, systemPrompt, history: session.history.slice(0, -1) });
+    if (response.rag.used || !flow.useKnowledge) {
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
-    } else if (flow.useKnowledge && fallbackToEscalation) {
+      await this.aiConversation.summarizeIfNeeded(session.senderId);
+    } else if (fallbackToEscalation) {
       const noResultMsg = this.configLoader.interpolate(flow.noResultMessage ?? '', {
         developerName: identity.developerName,
       });
@@ -353,13 +356,9 @@ export class BotService {
       this.sessionService.setState(session.senderId, 'ESCALATED');
       return;
     } else {
-      const systemPrompt = this.configLoader.interpolate(
-        flow.systemPromptOverride ?? ai.systemPrompt,
-        { company: identity.company, developerName: identity.developerName, botName: identity.name, tone: identity.tone },
-      );
-      const response = await this.ai.generate({ prompt: query, systemPrompt, history: session.history.slice(0, -1) });
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
+      await this.aiConversation.summarizeIfNeeded(session.senderId);
     }
 
     await this.send(adapter, session.senderId, flow.continuePrompt);
@@ -403,19 +402,17 @@ export class BotService {
       tone: identity.tone,
     });
 
-    let systemPrompt = baseSystemPrompt;
-
-    if (ai.useKnowledge) {
-      const knowledgeResult = await this.knowledgeService.search(query);
-      if (knowledgeResult) {
-        systemPrompt = `${baseSystemPrompt}\n\nUsá esta información para responder:\n---\n${knowledgeResult.content}\n---`;
-      }
-    }
-
     try {
-      const response = await this.ai.generate({ prompt: query, systemPrompt, history: session.history.slice(0, -1) });
+      const response = await this.aiConversation.generateResponse({
+        senderId: session.senderId,
+        prompt: query,
+        systemPrompt: baseSystemPrompt,
+        history: session.history.slice(0, -1),
+        useKnowledge: ai.useKnowledge,
+      });
       this.sessionService.addToHistory(session.senderId, 'assistant', response.text);
       await this.send(adapter, session.senderId, response.text);
+      await this.aiConversation.summarizeIfNeeded(session.senderId);
     } catch (error) {
       this.logger.error(`AI generation failed for ${session.senderId}: ${(error as Error).message}`);
       const { identity } = this.configLoader.botConfig;

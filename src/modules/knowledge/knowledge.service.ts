@@ -44,33 +44,44 @@ export class KnowledgeService implements OnModuleInit {
    *   If omitted, all indexed documents are searched.
    */
   async search(query: string, allowedSources?: string[]): Promise<KnowledgeSearchResult | null> {
+    const results = await this.searchMany(query, allowedSources, this.configLoader.botConfig.ai.ragTopK);
+    return results[0] ?? null;
+  }
+
+  async searchMany(query: string, allowedSources?: string[], limit?: number): Promise<KnowledgeSearchResult[]> {
     const minScore = this.configLoader.botConfig.ai.ragMinScore;
-    const topK = this.configLoader.botConfig.ai.ragTopK;
+    const topK = Math.max(1, limit ?? this.configLoader.botConfig.ai.ragTopK);
 
     // 1. Try FAQ keyword match first (free, instant)
-    const faqResult = this.searchFaq(query);
-    if (faqResult) return faqResult;
+    const faqResults = this.searchFaqMany(query, topK);
+    if (faqResults.length) return faqResults;
 
     // 2. Semantic search via embeddings — skip if no vectors indexed
     const count = (this.db.prepare('SELECT COUNT(*) as n FROM vectors').get() as { n: number }).n;
-    if (count === 0) return null;
+    if (count === 0) return [];
 
     const queryEmbedding = await this.embeddingProvider.embed(query);
     const results = this.vectorSearch(queryEmbedding, topK, allowedSources);
-
-    const best = results[0];
-    if (best && best.score >= minScore) {
-      this.logger.debug(`Vector match: score=${best.score.toFixed(3)} source="${best.source}"`);
-      return best;
+    const matches = results.filter((result) => result.score >= minScore);
+    if (matches.length) {
+      this.logger.debug(
+        `Vector matches: ${matches.map((item) => `${item.source}:${item.score.toFixed(3)}`).join(', ')}`,
+      );
+      return matches;
     }
 
     this.logger.debug(`No knowledge match found for: "${query.slice(0, 50)}"`);
-    return null;
+    return [];
   }
 
   private searchFaq(query: string): KnowledgeSearchResult | null {
+    return this.searchFaqMany(query, 1)[0] ?? null;
+  }
+
+  private searchFaqMany(query: string, limit: number): KnowledgeSearchResult[] {
     const normalized = query.toLowerCase();
     const entries = this.configLoader.knowledge;
+    const results: KnowledgeSearchResult[] = [];
 
     for (const entry of entries) {
       const matchesTag = entry.tags.some((tag) => normalized.includes(tag.toLowerCase()));
@@ -79,10 +90,11 @@ export class KnowledgeService implements OnModuleInit {
       if (matchesTag || matchesQuestion) {
         const content = this.formatFaqEntry(entry);
         this.logger.debug(`FAQ match: "${entry.id}"`);
-        return { content, score: 1.0, source: `faq:${entry.id}` };
+        results.push({ content, score: 1.0, source: `faq:${entry.id}` });
+        if (results.length >= limit) break;
       }
     }
-    return null;
+    return results;
   }
 
   private formatFaqEntry(entry: KnowledgeEntry): string {

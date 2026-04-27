@@ -1,5 +1,23 @@
 [
   {
+    "id": "tagged-follow-up",
+    "name": "Seguimiento por tag",
+    "enabled": true,
+    "audience": {
+      "mode": "tags",
+      "tags": ["cliente-activo"]
+    },
+    "template": "Hola {name}, te escribimos por novedades relacionadas con {tags}.",
+    "rateLimit": {
+      "delayMs": 4000,
+      "maxPerRun": 100
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": 3000
+    }
+  },
+  {
     "id": "good-morning",
     "name": "Presentacion inicial",
     "enabled": true,

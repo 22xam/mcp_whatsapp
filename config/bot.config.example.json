@@ -147,7 +147,10 @@
     "ragTopK": 3,
     "fallbackToEscalation": true,
     "maxHistoryMessages": 10,
-    "useKnowledge": true
+    "useKnowledge": true,
+    "memoryEnabled": true,
+    "memoryRecentMessages": 12,
+    "memorySummaryThreshold": 24
   },
   "humanDelay": {
     "enabled": true,

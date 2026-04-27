@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Res, Sse } from '@nestjs/common';
+import type { Response } from 'express';
+import { map } from 'rxjs/operators';
 import { SessionService } from '../session/session.service';
 import { ConfigLoaderService } from '../config/config-loader.service';
 import { BotConfigService } from '../config/bot-config.service';
@@ -8,6 +10,8 @@ import { BotService } from '../bot/bot.service';
 import { TrelloService } from '../trello/trello.service';
 import { BroadcastService } from './broadcast.service';
 import { OpenRouterProvider } from '../ai/providers/openrouter.provider';
+import { AuditService } from '../data/audit.service';
+import { MessageStoreService } from '../messaging/message-store.service';
 import type { MessageAdapter, OutgoingMessage, IncomingMessage } from '../core/interfaces/message-adapter.interface';
 
 /** In-memory adapter that captures bot responses instead of sending to WhatsApp. */
@@ -34,6 +38,8 @@ export class ApiController {
     private readonly trelloService: TrelloService,
     private readonly broadcastService: BroadcastService,
     private readonly openRouterProvider: OpenRouterProvider,
+    private readonly auditService: AuditService,
+    private readonly messageStore: MessageStoreService,
   ) {}
 
   // ─── Status ──────────────────────────────────────────────────
@@ -108,6 +114,13 @@ export class ApiController {
   pause(@Body() body: { number: string }) {
     const senderId = body.number.includes('@') ? body.number : `${body.number}@c.us`;
     const isNew = this.botControlService.pause(senderId);
+    this.auditService.record({
+      entityType: 'conversation',
+      entityId: senderId,
+      action: 'paused',
+      source: 'api',
+      metadata: { isNew },
+    });
     return { ok: true, isNew, number: body.number };
   }
 
@@ -115,6 +128,13 @@ export class ApiController {
   resume(@Body() body: { number: string }) {
     const senderId = body.number.includes('@') ? body.number : `${body.number}@c.us`;
     const existed = this.botControlService.resume(senderId);
+    this.auditService.record({
+      entityType: 'conversation',
+      entityId: senderId,
+      action: 'resumed',
+      source: 'api',
+      metadata: { existed },
+    });
     return { ok: true, existed, number: body.number };
   }
 
@@ -122,7 +142,14 @@ export class ApiController {
   resumeAll() {
     const paused = this.botControlService.getPausedSenders();
     paused.forEach((s) => this.botControlService.resume(s));
-    return { ok: true, resumed: paused.map((s) => s.replace('@c.us', '')) };
+    const resumed = paused.map((s) => s.replace('@c.us', '').replace('@lid', ''));
+    this.auditService.record({
+      entityType: 'conversation',
+      action: 'resume_all',
+      source: 'api',
+      metadata: { count: resumed.length, resumed },
+    });
+    return { ok: true, count: resumed.length, resumed };
   }
 
   // ─── Test message simulation ─────────────────────────────────
@@ -159,10 +186,24 @@ export class ApiController {
   // ─── Knowledge ───────────────────────────────────────────────
 
   @Get('knowledge/search')
-  async searchKnowledge(@Query('q') query: string) {
+  async searchKnowledge(@Query('q') query: string, @Query('limit') limit?: string) {
     if (!query) return { result: null, query: '' };
-    const result = await this.knowledgeService.search(query);
-    return { result, query };
+    const results = await this.knowledgeService.searchMany(
+      query,
+      undefined,
+      limit ? Number(limit) : this.configLoader.botConfig.ai.ragTopK,
+    );
+    return {
+      result: results[0] ?? null,
+      results,
+      sources: results.map((result, index) => ({
+        label: `S${index + 1}`,
+        source: result.source,
+        score: result.score,
+        content: result.content,
+      })),
+      query,
+    };
   }
 
   @Post('knowledge/rebuild')
@@ -194,6 +235,9 @@ export class ApiController {
         ragTopK: config.ai.ragTopK,
         ragMinScore: config.ai.ragMinScore,
         maxHistoryMessages: config.ai.maxHistoryMessages,
+        memoryEnabled: config.ai.memoryEnabled ?? true,
+        memoryRecentMessages: config.ai.memoryRecentMessages ?? config.ai.maxHistoryMessages,
+        memorySummaryThreshold: config.ai.memorySummaryThreshold ?? 24,
         fallbackToEscalation: config.ai.fallbackToEscalation,
       },
       escalation: {
@@ -204,6 +248,17 @@ export class ApiController {
         enabled: this.trelloService.isEnabled,
         lists: (config.trello as any)?.lists ?? {},
       },
+    };
+  }
+
+  @Get('audit')
+  getAudit(
+    @Query('limit') limit?: string,
+    @Query('entityType') entityType?: string,
+    @Query('action') action?: string,
+  ) {
+    return {
+      events: this.auditService.list(limit ? Number(limit) : 100, { entityType, action }),
     };
   }
 
@@ -271,6 +326,27 @@ export class ApiController {
     const skipped = results.filter((r) => r.status === 'skipped').length;
 
     return { ok: true, sent, failed, skipped, results };
+  }
+
+  // ─── Messages ────────────────────────────────────────────────
+
+  @Get('messages')
+  getMessages(@Query('senderId') senderId?: string, @Query('limit') limit?: string) {
+    return this.messageStore.getAll(senderId, limit ? Number(limit) : 200);
+  }
+
+  @Get('messages/senders')
+  getMessageSenders() {
+    return this.messageStore.getSenders();
+  }
+
+  @Sse('messages/stream')
+  streamMessages(@Res() res: Response) {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    return this.messageStore.events$.pipe(
+      map((msg) => ({ data: JSON.stringify(msg) })),
+    );
   }
 
   // ─── Helpers ─────────────────────────────────────────────────

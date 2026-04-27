@@ -1,5 +1,6 @@
 import { ApiClient } from './api-client';
 import { c, ok, fail, info, warn, header, table } from './display';
+import { readFileSync } from 'fs';
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 
@@ -163,6 +164,32 @@ export async function cmdClientAdd(client: ApiClient, args: string[]): Promise<v
   if (res && typeof res === 'object' && !res.message) printObject(res);
 }
 
+export async function cmdClientsImport(client: ApiClient, args: string[]): Promise<void> {
+  const file = args[0];
+  const commit = args.includes('--commit');
+  if (!file) {
+    console.log(fail('Uso: clients import <archivo.csv> [--commit]'));
+    return;
+  }
+
+  const csv = readFileSync(file, 'utf-8');
+  const endpoint = commit ? '/api/clients/import/commit' : '/api/clients/import/preview';
+  const result = await client.post<any>(endpoint, { csv });
+
+  if (commit) {
+    if (result.invalid?.length) {
+      console.log(fail(`Importacion cancelada: ${result.invalid.length} filas invalidas`));
+      printImportPreview(result.invalid);
+      return;
+    }
+    console.log(ok(`Clientes importados: ${result.imported}`));
+    return;
+  }
+
+  printImportPreview(result);
+  console.log(info('Para aplicar la importacion: clients import <archivo.csv> --commit'));
+}
+
 function printClients(clients: any[]): void {
   if (clients.length === 0) {
     console.log(info('No hay clientes configurados'));
@@ -174,10 +201,31 @@ function printClients(clients: any[]): void {
   const rows = clients.map((c) => [
     c.name ?? '—',
     c.phone ?? '—',
-    c.email ?? '—',
-    c.plan ?? '—',
+    c.company ?? '—',
+    Array.isArray(c.systems) && c.systems.length > 0 ? c.systems.join(', ') : '—',
+    Array.isArray(c.tags) && c.tags.length > 0 ? c.tags.join(', ') : '—',
   ]);
-  console.log(table(['Nombre', 'Teléfono', 'Email', 'Plan'], rows));
+  console.log(table(['Nombre', 'Teléfono', 'Empresa', 'Sistemas', 'Tags'], rows));
+}
+
+function printImportPreview(items: any[]): void {
+  if (!items.length) {
+    console.log(info('No hay filas para importar'));
+    return;
+  }
+
+  console.log(header(`Preview importacion (${items.length})`));
+  console.log(table(
+    ['Telefono', 'Nombre', 'Accion', 'Valido', 'Errores', 'Tags'],
+    items.map((item) => [
+      item.phone ?? '-',
+      item.name ?? '-',
+      item.action ?? '-',
+      item.valid ? 'si' : 'no',
+      item.errors?.join(', ') ?? '-',
+      item.tags?.join(', ') ?? '-',
+    ]),
+  ));
 }
 
 // ─── Campaigns ───────────────────────────────────────────────────────────────
@@ -211,22 +259,6 @@ export async function cmdCampaignShow(client: ApiClient, campaignId: string): Pr
   const campaign = await client.get<any>(`/api/campaigns/${encodeURIComponent(campaignId)}`);
   console.log(header(`Campaña ${campaignId}`));
   printObject(campaign);
-}
-
-export async function cmdCampaignCreate(client: ApiClient, args: string[]): Promise<void> {
-  const json = readJsonFlag(args);
-  const name = args[0];
-  const message = args.slice(1).join(' ');
-
-  if (!json && (!name || !message)) {
-    console.log(fail('Uso: campaigns create <nombre> <mensaje>  |  campaigns create --json \'{"name":"...","message":"..."}\''));
-    return;
-  }
-
-  const body = json ?? { name, message };
-  const res = await client.post<any>('/api/campaigns', body);
-  console.log(ok(res?.message ?? 'Campaña creada'));
-  if (res && typeof res === 'object' && !res.message) printObject(res);
 }
 
 export async function cmdCampaignRun(client: ApiClient, args: string[]): Promise<void> {
@@ -263,8 +295,8 @@ export async function cmdCampaignRuns(client: ApiClient, campaignId?: string): P
     String(run.id ?? run.runId ?? '—'),
     String(run.campaignId ?? run.campaign?.id ?? '—'),
     run.status ?? '—',
-    String(run.sent ?? run.sentCount ?? 0),
-    String(run.failed ?? run.failedCount ?? 0),
+    String(run.totals?.sent ?? run.sent ?? run.sentCount ?? 0),
+    String(run.totals?.failed ?? run.failed ?? run.failedCount ?? 0),
     formatDate(run.createdAt ?? run.startedAt ?? run.finishedAt),
   ]);
   console.log(table(['Run', 'Campaña', 'Estado', 'Enviados', 'Fallidos', 'Fecha'], rows));
@@ -570,8 +602,14 @@ export async function cmdCampaignStatus(client: ApiClient, id?: string): Promise
 }
 
 export async function cmdCampaignAction(client: ApiClient, action: string, id: string): Promise<void> {
+  if (action === 'process' || action === 'process-queued') {
+    const result = await client.post<any>('/api/campaign-runs/process');
+    console.log(ok(`Worker ejecutado: ${result.processed} procesados / ${result.activeRuns} corridas activas`));
+    return;
+  }
+
   if (!id || !['pause', 'resume', 'cancel', 'process-next'].includes(action)) {
-    console.log(fail('Uso: campaign <pause|resume|cancel|process-next> <runId>'));
+    console.log(fail('Uso: campaign <pause|resume|cancel|process-next> <runId> | campaign process'));
     return;
   }
   const run = await client.post<any>(`/api/campaign-runs/${id}/${action}`);

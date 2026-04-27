@@ -1,0 +1,29 @@
+{
+  "_comentarios": {
+    "perfil": "Valores calibrados para cuenta personal/Business no oficial (whatsapp-web.js). Basado en límites validados por la comunidad (baileys-antiban, GREEN-API).",
+    "delayMin_ms": "Pausa mínima entre mensajes. Nunca bajar de 3000ms en producción.",
+    "delayMax_ms": "Pausa máxima. El bot elige un valor aleatorio entre min y max con distribución gaussiana para parecer humano.",
+    "delayFirstContact_ms": "Penalización extra para números que nunca recibieron un mensaje del bot (primeros contactos). Se suma al delay normal.",
+    "maxPerDay": "Techo diario de mensajes totales. Para cuentas nuevas (<10 días) reducir a 20.",
+    "maxPerHour": "Techo por hora. WhatsApp sospecha de ráfagas sostenidas.",
+    "pauseAfterBatch": "Pausa larga (ms) cada N mensajes enviados. Simula que el humano se cansa.",
+    "batchSize": "Cantidad de mensajes antes de aplicar pauseAfterBatch.",
+    "sendWindowStart": "Hora de inicio de envíos (formato HH:MM, hora local del servidor).",
+    "sendWindowEnd": "Hora de fin de envíos. Fuera de esta ventana el worker no procesa jobs.",
+    "maxConsecutiveDays": "Máximo de días consecutivos corriendo campañas antes de forzar un día de pausa.",
+    "warmupMode": "En true aplica el plan de calentamiento progresivo para números nuevos (ignora maxPerDay y usa warmupSchedule).",
+    "warmupSchedule": "Límite diario por día de calentamiento (factor 1.8x por día). Día 1=20, Día 2=36, etc."
+  },
+  "delayMin_ms": 4000,
+  "delayMax_ms": 9000,
+  "delayFirstContact_ms": 3000,
+  "maxPerDay": 200,
+  "maxPerHour": 80,
+  "pauseAfterBatch": 300000,
+  "batchSize": 30,
+  "sendWindowStart": "09:00",
+  "sendWindowEnd": "20:00",
+  "maxConsecutiveDays": 3,
+  "warmupMode": false,
+  "warmupSchedule": [20, 36, 65, 117, 210, 378, 680]
+}

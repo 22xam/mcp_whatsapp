@@ -16,6 +16,7 @@ export interface RagContextRequest {
 
 export interface RagCitation {
   index: number;
+  label: string;
   source: string;
   score?: number;
   content: string;
@@ -51,6 +52,7 @@ export class RagContextService implements OnModuleInit {
 
     const citations = results.map((result, index) => ({
       index: index + 1,
+      label: `S${index + 1}`,
       source: result.source,
       score: result.score,
       content: result.content,
@@ -67,7 +69,7 @@ export class RagContextService implements OnModuleInit {
     return citations
       .map((citation) => {
         const score = typeof citation.score === 'number' ? ` | relevancia: ${citation.score.toFixed(3)}` : '';
-        return `[${citation.index}] Fuente: ${citation.source}${score}\n${citation.content.trim()}`;
+        return `[${citation.label}] Fuente: ${citation.source}${score}\n${citation.content.trim()}`;
       })
       .join('\n\n');
   }
@@ -110,7 +112,8 @@ export class RagContextService implements OnModuleInit {
       formattedCitations,
       'Instrucciones RAG:',
       '- Respondé usando el contexto cuando sea relevante.',
-      '- Citá las fuentes usadas con el formato [1], [2], etc.',
+      '- Citá las fuentes usadas con el formato [S1], [S2], etc.',
+      '- No cites fuentes que no aparezcan en el contexto.',
       '- Si el contexto no alcanza para responder con certeza, aclaralo sin inventar datos.',
       customInstruction,
     ]

@@ -62,6 +62,18 @@ interface OpenRouterModelsResponse {
   data: OpenRouterModel[];
 }
 
+interface OpenRouterAttemptResult {
+  response: AIGenerateResponse;
+  model: string;
+  latencyMs: number;
+}
+
+interface OpenRouterAttemptError {
+  model: string;
+  error: string;
+  latencyMs: number;
+}
+
 @Injectable()
 export class OpenRouterProvider implements AIProvider, EmbeddingProvider {
   readonly providerName = 'OpenRouter';
@@ -74,8 +86,14 @@ export class OpenRouterProvider implements AIProvider, EmbeddingProvider {
   ) {}
 
   async generate(request: AIGenerateRequest): Promise<AIGenerateResponse> {
+    const startedAt = Date.now();
     const { ai, identity } = this.configLoader.botConfig;
     const models = this.modelsWithFallbacks(ai.model);
+    const raceMode = this.botConfig.openRouterRaceModels && models.length > 1;
+    this.logger.debug(
+      `OpenRouter generate start — models=${models.join(', ')} race=${raceMode} ` +
+        `promptChars=${request.prompt.length} history=${request.history?.length ?? 0} timeoutMs=${this.botConfig.openRouterTimeoutMs}`,
+    );
 
     const systemPrompt =
       request.systemPrompt ??
@@ -98,45 +116,11 @@ export class OpenRouterProvider implements AIProvider, EmbeddingProvider {
       },
     ];
 
-    let lastError = new Error('Unknown OpenRouter error');
-
-    for (const model of models) {
-      this.logger.debug(`Sending prompt to OpenRouter model "${model}"`);
-
-      try {
-        const { data } = await firstValueFrom(
-          this.httpService.post<OpenRouterChatResponse>(
-            `${this.botConfig.openRouterBaseUrl}/chat/completions`,
-            {
-              model,
-              messages,
-            },
-            { headers: this.headers() },
-          ),
-        );
-
-        return {
-          text: this.extractText(data),
-          metadata: {
-            id: data.id,
-            model: data.model ?? model,
-            requestedModel: model,
-            usage: data.usage,
-          },
-        };
-      } catch (error: any) {
-        const msg = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Unknown error';
-        lastError = new Error(msg);
-
-        if (model === models[models.length - 1]) {
-          this.logger.error(`OpenRouter generation failed for "${model}": ${msg}`);
-        } else {
-          this.logger.warn(`OpenRouter model "${model}" failed; trying fallback: ${msg}`);
-        }
-      }
+    if (raceMode) {
+      return this.generateRace(models, messages, startedAt);
     }
 
-    throw new Error(`AI provider error: ${lastError.message}`);
+    return this.generateSequential(models, messages, startedAt);
   }
 
   async embed(text: string): Promise<number[]> {
@@ -225,6 +209,127 @@ export class OpenRouterProvider implements AIProvider, EmbeddingProvider {
       return content.map((part) => part.text ?? '').join('');
     }
     return '';
+  }
+
+  private async generateRace(
+    models: string[],
+    messages: OpenRouterMessage[],
+    startedAt: number,
+  ): Promise<AIGenerateResponse> {
+    this.logger.debug(`Racing ${models.length} OpenRouter models: ${models.join(', ')}`);
+    const errors: OpenRouterAttemptError[] = [];
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let remaining = models.length;
+
+      for (const model of models) {
+        void this.tryModel(model, messages, this.botConfig.openRouterTimeoutMs)
+          .then((result) => {
+            if (settled) return;
+            settled = true;
+            this.logger.log(
+              `OpenRouter race winner="${result.model}" totalMs=${Date.now() - startedAt} ` +
+                `modelMs=${result.latencyMs} chars=${result.response.text.length} remaining=${remaining - 1}/${models.length}`,
+            );
+            resolve({
+              ...result.response,
+              metadata: {
+                ...result.response.metadata,
+                raceMode: true,
+                raceModels: models,
+                winnerModel: result.model,
+                latencyMs: result.latencyMs,
+              },
+            });
+          })
+          .catch((err: OpenRouterAttemptError) => {
+            errors.push(err);
+            remaining--;
+            if (!settled && remaining === 0) {
+              settled = true;
+              const allFailed = this.buildAllModelsFailedError(errors);
+              this.logger.error(`OpenRouter race failed after ${Date.now() - startedAt}ms — ${allFailed.message}`);
+              reject(allFailed);
+            }
+          });
+      }
+    });
+  }
+
+  private async generateSequential(
+    models: string[],
+    messages: OpenRouterMessage[],
+    startedAt: number,
+  ): Promise<AIGenerateResponse> {
+    const attempts: OpenRouterAttemptError[] = [];
+
+    for (const model of models) {
+      try {
+        const result = await this.tryModel(model, messages);
+        this.logger.log(
+          `OpenRouter generate success — model=${result.model} totalMs=${Date.now() - startedAt} ` +
+            `modelMs=${result.latencyMs} chars=${result.response.text.length}`,
+        );
+        return result.response;
+      } catch (error) {
+        attempts.push(error as OpenRouterAttemptError);
+      }
+    }
+
+    const error = this.buildAllModelsFailedError(attempts);
+    this.logger.error(`OpenRouter generate failed after ${Date.now() - startedAt}ms — ${error.message}`);
+    throw error;
+  }
+
+  private async tryModel(
+    model: string,
+    messages: OpenRouterMessage[],
+    timeoutMs = this.botConfig.openRouterTimeoutMs,
+  ): Promise<OpenRouterAttemptResult> {
+    const startedAt = Date.now();
+    this.logger.debug(`Sending prompt to OpenRouter model "${model}"`);
+
+    const requestPromise = firstValueFrom(
+      this.httpService.post<OpenRouterChatResponse>(
+        `${this.botConfig.openRouterBaseUrl}/chat/completions`,
+        { model, messages },
+        { headers: this.headers(), timeout: timeoutMs },
+      ),
+    );
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout after ${timeoutMs}ms`)), timeoutMs),
+    );
+
+    try {
+      const { data } = await Promise.race([requestPromise, timeoutPromise]);
+      const latencyMs = Date.now() - startedAt;
+      return {
+        model,
+        latencyMs,
+        response: {
+          text: this.extractText(data),
+          metadata: {
+            id: data.id,
+            model: data.model ?? model,
+            requestedModel: model,
+            usage: data.usage,
+            latencyMs,
+          },
+        },
+      };
+    } catch (error: any) {
+      const latencyMs = Date.now() - startedAt;
+      const msg = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Unknown error';
+      this.logger.warn(`OpenRouter model "${model}" failed in ${latencyMs}ms: ${msg}`);
+      throw { model, error: msg, latencyMs } satisfies OpenRouterAttemptError;
+    }
+  }
+
+  private buildAllModelsFailedError(attempts: OpenRouterAttemptError[]): Error {
+    const details = attempts.map((attempt) => `${attempt.model}: ${attempt.error}`).join(' | ');
+    return new Error(`AI provider error: all OpenRouter models failed. ${details}`);
   }
 
   private modelsWithFallbacks(primaryModel: string): string[] {

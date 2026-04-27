@@ -125,8 +125,10 @@ async function runDirect(client: ApiClient, args: string[]): Promise<void> {
         await cmds.cmdClientShow(client, rest[1]);
       } else if (rest[0] === 'add') {
         await cmds.cmdClientAdd(client, rest.slice(1));
+      } else if (rest[0] === 'import') {
+        await cmds.cmdClientsImport(client, rest.slice(1));
       } else {
-        console.log(info('Uso: clients [list] | clients show <teléfono> | clients add <teléfono> <nombre>'));
+        console.log(info('Uso: clients [list] | clients show <telefono> | clients add <telefono> <nombre> | clients import <archivo.csv> [--commit]'));
         process.exit(1);
       }
       break;
@@ -136,14 +138,18 @@ async function runDirect(client: ApiClient, args: string[]): Promise<void> {
         await cmds.cmdCampaigns(client);
       } else if (rest[0] === 'show') {
         await cmds.cmdCampaignShow(client, rest[1]);
-      } else if (rest[0] === 'create') {
-        await cmds.cmdCampaignCreate(client, rest.slice(1));
+      } else if (rest[0] === 'preview') {
+        await cmds.cmdCampaignPreview(client, rest[1], Number(rest[2] ?? '5'));
       } else if (rest[0] === 'run') {
         await cmds.cmdCampaignRun(client, rest.slice(1));
       } else if (rest[0] === 'runs') {
         await cmds.cmdCampaignRuns(client, rest[1]);
+      } else if (rest[0] === 'status') {
+        await cmds.cmdCampaignStatus(client, rest[1]);
+      } else if (['pause', 'resume', 'cancel', 'process-next', 'process', 'process-queued'].includes(rest[0])) {
+        await cmds.cmdCampaignAction(client, rest[0], rest[1]);
       } else {
-        console.log(info('Uso: campaigns [list] | campaigns show <id> | campaigns create <nombre> <mensaje> | campaigns run <id> | campaigns runs [id]'));
+        console.log(info('Uso: campaigns [list] | campaigns show <id> | campaigns preview <id> [limit] | campaigns run <id> | campaigns runs [id]'));
         process.exit(1);
       }
       break;
@@ -184,8 +190,7 @@ async function runDirect(client: ApiClient, args: string[]): Promise<void> {
       break;
 
     case 'campaign':
-    case 'campaigns':
-      if (cmd === 'campaigns' || rest.length === 0) {
+      if (rest.length === 0) {
         await cmds.cmdCampaigns(client);
       } else if (rest[0] === 'preview') {
         await cmds.cmdCampaignPreview(client, rest[1], Number(rest[2] ?? '5'));
@@ -193,13 +198,11 @@ async function runDirect(client: ApiClient, args: string[]): Promise<void> {
         await cmds.cmdCampaignRun(client, rest.slice(1));
       } else if (rest[0] === 'status') {
         await cmds.cmdCampaignStatus(client, rest[1]);
+      } else if (rest[0] === 'process' || rest[0] === 'process-queued') {
+        await cmds.cmdCampaignAction(client, rest[0], rest[1]);
       } else {
         await cmds.cmdCampaignAction(client, rest[0], rest[1]);
       }
-      break;
-
-    case 'optouts':
-      await cmds.cmdOptOuts(client);
       break;
 
     case 'optout':
@@ -278,9 +281,9 @@ ${c.bold}Comandos:${c.reset}
   clients [list]                     Lista de clientes
   clients show <teléfono>            Detalle de cliente
   clients add <teléfono> <nombre>    Crear cliente
+  clients import <csv> [--commit]    Preview/importacion CSV
   campaigns [list]                   Lista campañas
   campaigns show <id>                Detalle de campaña
-  campaigns create <nombre> <msg>    Crear campaña
   campaigns run <id>                 Ejecutar campaña
   campaigns runs [id]                Ver ejecuciones
   optouts [list]                     Lista opt-outs
@@ -296,6 +299,7 @@ ${c.bold}Comandos:${c.reset}
   campaign run <id> [dry]            Crear corrida de campaña
   campaign status [runId]            Estado de corridas
   campaign process-next <runId>      Enviar siguiente job en cola
+  campaign process                   Ejecutar un ciclo del worker
   optouts                            Listar bajas
   optout add/remove <teléfono>       Gestionar bajas
   openrouter models [embeddings|all] Modelos disponibles en OpenRouter

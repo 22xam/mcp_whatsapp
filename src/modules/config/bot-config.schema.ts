@@ -7,6 +7,12 @@ import Joi from 'joi';
  */
 export const botConfigSchema = Joi.object({
   PORT: Joi.number().default(3000),
+  BOT_OSCAR_DB_PATH: Joi.string().optional(),
+  WHATSAPP_ENABLED: Joi.boolean().default(true),
+  WHATSAPP_SESSION_ID: Joi.string().allow('').optional(),
+  CAMPAIGN_WORKER_ENABLED: Joi.boolean().default(true),
+  CAMPAIGN_WORKER_INTERVAL_MS: Joi.number().integer().min(1000).default(5000),
+  BOT_OSCAR_ADMIN_TOKEN: Joi.string().allow('').optional(),
 
   // ── Gemini ───────────────────────────────────────────────────
   GEMINI_API_KEY: Joi.string()
@@ -34,8 +40,10 @@ export const botConfigSchema = Joi.object({
     .description('OpenRouter API key'),
   OPENROUTER_BASE_URL: Joi.string().uri().default('https://openrouter.ai/api/v1'),
   OPENROUTER_SITE_URL: Joi.string().uri().allow('').optional(),
-  OPENROUTER_APP_NAME: Joi.string().default('BugMate'),
+  OPENROUTER_APP_NAME: Joi.string().default('BOT-Oscar'),
   OPENROUTER_EMBEDDING_DIMENSIONS: Joi.number().integer().positive().optional(),
+  OPENROUTER_TIMEOUT_MS: Joi.number().integer().min(1000).default(60000),
+  OPENROUTER_RACE_MODELS: Joi.boolean().default(true),
 
   // ── AI provider selection ────────────────────────────────────
   AI_PROVIDER: Joi.string().valid('gemini', 'ollama', 'openrouter').default('gemini'),

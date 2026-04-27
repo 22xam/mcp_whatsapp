@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BOT-Oscar Panel</title>
+    <link rel="stylesheet" href="/panel/styles.css" />
+  </head>
+  <body>
+    <aside class="rail">
+      <div class="brand">
+        <span class="mark">BO</span>
+        <span>
+          <strong>BOT-Oscar</strong>
+          <small>Control operativo</small>
+        </span>
+      </div>
+      <nav>
+        <button class="nav active" data-view="dashboard">Dashboard</button>
+        <button class="nav" data-view="clients">Clientes</button>
+        <button class="nav" data-view="campaigns">Campañas</button>
+        <button class="nav" data-view="mensajes">Mensajes</button>
+        <button class="nav" data-view="sessions">Sesiones</button>
+        <button class="nav" data-view="audit">Auditoría</button>
+      </nav>
+      <div class="token-box">
+        <label for="token">Admin token</label>
+        <input id="token" type="password" autocomplete="off" placeholder="opcional" />
+        <button id="saveToken">Guardar</button>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <h1 id="viewTitle">Dashboard</h1>
+          <p id="viewSubtitle">Estado en vivo del bot y actividad reciente.</p>
+        </div>
+        <button id="refresh" class="primary">Actualizar</button>
+      </header>
+
+      <section id="dashboard" class="view active">
+        <div class="metrics" id="metrics"></div>
+        <div class="grid two">
+          <section class="panel">
+            <div class="section-head">
+              <h2>Campañas activas</h2>
+              <button data-action="process-worker">Procesar cola</button>
+            </div>
+            <div id="activeRuns"></div>
+          </section>
+          <section class="panel">
+            <div class="section-head">
+              <h2>Auditoría reciente</h2>
+            </div>
+            <div id="recentAudit"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="clients" class="view">
+        <div class="toolbar">
+          <input id="clientSearch" placeholder="Buscar nombre, teléfono, empresa o tag" />
+          <input id="clientTag" placeholder="Tag" />
+          <button data-action="load-clients">Filtrar</button>
+        </div>
+        <section class="panel">
+          <div class="section-head">
+            <h2>Clientes</h2>
+            <span id="clientCount" class="pill">0</span>
+          </div>
+          <div id="clientsTable"></div>
+        </section>
+        <section class="panel">
+          <div class="section-head">
+            <h2>Importar CSV</h2>
+            <button data-action="commit-import">Aplicar importación</button>
+          </div>
+          <textarea id="csvInput" rows="7" placeholder="phone,name,company,systems,tags,notes"></textarea>
+          <div class="inline-actions">
+            <button data-action="preview-import">Preview</button>
+            <span id="importStatus"></span>
+          </div>
+          <div id="importPreview"></div>
+        </section>
+      </section>
+
+      <section id="campaigns" class="view">
+        <div class="grid two">
+          <section class="panel">
+            <div class="section-head">
+              <h2>Campañas</h2>
+            </div>
+            <div id="campaignList"></div>
+          </section>
+          <section class="panel">
+            <div class="section-head">
+              <h2>Corridas</h2>
+              <select id="runStatus">
+                <option value="">Todas</option>
+                <option value="queued">queued</option>
+                <option value="running">running</option>
+                <option value="paused">paused</option>
+                <option value="completed">completed</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+            <div id="campaignRuns"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="section-head">
+            <h2>Detalle de corrida</h2>
+          </div>
+          <div id="runDetail" class="muted">Seleccioná una corrida.</div>
+        </section>
+      </section>
+
+      <section id="mensajes" class="view">
+        <div class="wa-shell">
+          <aside class="wa-sidebar">
+            <div class="wa-sidebar-head">
+              <span class="wa-sidebar-title">Conversaciones</span>
+              <span class="wa-live-dot" id="liveStatus" title="Conectando…"></span>
+            </div>
+            <div id="waContacts" class="wa-contacts"></div>
+          </aside>
+          <div class="wa-chat">
+            <div class="wa-chat-header" id="waChatHeader">
+              <div class="wa-avatar" id="waChatAvatar"></div>
+              <div>
+                <div class="wa-chat-name" id="waChatName">Seleccioná una conversación</div>
+                <div class="wa-chat-sub" id="waChatSub">—</div>
+              </div>
+            </div>
+            <div class="wa-messages" id="waMessages">
+              <div class="wa-empty">Seleccioná un contacto para ver la conversación</div>
+            </div>
+            <div class="wa-composer">
+              <input id="waInput" placeholder="Escribí un mensaje de prueba…" autocomplete="off" />
+              <button id="waSend" class="primary">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sessions" class="view">
+        <div class="toolbar">
+          <button data-action="resume-all">Reanudar todos</button>
+          <button data-action="load-sessions">Actualizar sesiones</button>
+        </div>
+        <div class="grid two">
+          <section class="panel">
+            <h2>Sesiones activas</h2>
+            <div id="sessionsTable"></div>
+          </section>
+          <section class="panel">
+            <h2>Pausados</h2>
+            <div id="pausedList"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="audit" class="view">
+        <div class="toolbar">
+          <input id="auditEntity" placeholder="entityType" />
+          <input id="auditAction" placeholder="action" />
+          <button data-action="load-audit">Filtrar</button>
+        </div>
+        <section class="panel">
+          <h2>Eventos</h2>
+          <div id="auditTable"></div>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast"></div>
+    <script src="/panel/app.js"></script>
+  </body>
+</html>

@@ -61,12 +61,21 @@ export class BotConfigService {
   }
 
   get openRouterAppName(): string {
-    return this.config.get<string>('OPENROUTER_APP_NAME', 'BugMate');
+    return this.config.get<string>('OPENROUTER_APP_NAME', 'BOT-Oscar');
   }
 
   get openRouterEmbeddingDimensions(): number | undefined {
     const value = this.config.get<string>('OPENROUTER_EMBEDDING_DIMENSIONS');
     return value ? Number(value) : undefined;
+  }
+
+  get openRouterTimeoutMs(): number {
+    return Number(this.config.get<number>('OPENROUTER_TIMEOUT_MS', 60000));
+  }
+
+  get openRouterRaceModels(): boolean {
+    const value = this.config.get<boolean | string>('OPENROUTER_RACE_MODELS', true);
+    return value === true || value === 'true';
   }
 
   get aiProvider(): 'gemini' | 'ollama' | 'openrouter' {

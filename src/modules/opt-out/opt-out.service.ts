@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AuditService } from '../data/audit.service';
 import { DatabaseService } from '../data/database.service';
 
 export interface OptOutEntry {
@@ -19,7 +20,10 @@ interface OptOutRow {
 export class OptOutService {
   readonly keywords = ['baja', 'stop', 'no quiero', 'no me escribas', 'no recibir'];
 
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly audit: AuditService,
+  ) {}
 
   list(): OptOutEntry[] {
     const rows = this.database.connection
@@ -54,14 +58,31 @@ export class OptOutService {
           created_at = excluded.created_at
       `)
       .run(normalized, reason ?? null, source, createdAt);
+    this.audit.record({
+      entityType: 'opt_out',
+      entityId: normalized,
+      action: 'added',
+      source,
+      metadata: { reason },
+    });
     return { phone: normalized, reason, source, createdAt };
   }
 
   remove(phone: string): boolean {
+    const normalized = this.normalizePhone(phone);
     const result = this.database.connection
       .prepare('DELETE FROM opt_outs WHERE phone = ?')
-      .run(this.normalizePhone(phone));
-    return result.changes > 0;
+      .run(normalized);
+    const removed = result.changes > 0;
+    if (removed) {
+      this.audit.record({
+        entityType: 'opt_out',
+        entityId: normalized,
+        action: 'removed',
+        source: 'api',
+      });
+    }
+    return removed;
   }
 
   matches(text: string | undefined): boolean {
