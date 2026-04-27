@@ -22,6 +22,7 @@
         <button class="nav" data-view="mensajes">Mensajes</button>
         <button class="nav" data-view="sessions">Sesiones</button>
         <button class="nav" data-view="audit">Auditoría</button>
+        <button class="nav" data-view="consola">Consola</button>
       </nav>
       <div class="token-box">
         <label for="token">Admin token</label>
@@ -171,6 +172,23 @@
           <h2>Eventos</h2>
           <div id="auditTable"></div>
         </section>
+      </section>
+      <section id="consola" class="view">
+        <div class="toolbar">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+            <input type="checkbox" id="consolePause" /> Pausar
+          </label>
+          <select id="consoleLevel">
+            <option value="">Todos</option>
+            <option value="LOG">LOG</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+            <option value="DEBUG">DEBUG</option>
+          </select>
+          <input id="consoleFilter" placeholder="Filtrar por contexto o mensaje…" style="flex:1" />
+          <button data-action="clear-console">Limpiar</button>
+        </div>
+        <div id="consoleOutput" class="console-output"></div>
       </section>
     </main>
 

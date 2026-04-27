@@ -44,6 +44,27 @@ export class CampaignWorkerService implements OnApplicationBootstrap, OnModuleDe
     }
   }
 
+  /** Procesa un job de una corrida específica ignorando la ventana horaria y los rate-limits.
+   *  Pensado para envíos manuales de prueba desde el panel. */
+  async tickForced(runId: string): Promise<{ processed: number; blocked?: string }> {
+    if (this.running) {
+      this.logger.warn(`Campaign worker forced tick skipped — previous tick still running`);
+      return { processed: 0, blocked: 'running' };
+    }
+    this.running = true;
+    try {
+      this.logger.log(`Campaign worker: FORCED tick for run ${runId} (bypassing send window and rate limits)`);
+      await this.campaignService.processNextQueuedJob(runId);
+      this.lastProcessedAt.set(runId, Date.now());
+      this.sentToday++;
+      this.sentThisHour++;
+      this.sentInBatch++;
+      return { processed: 1 };
+    } finally {
+      this.running = false;
+    }
+  }
+
   async tick(): Promise<{ processed: number; activeRuns: number; blocked?: string }> {
     if (this.running) {
       this.logger.debug('Campaign worker tick skipped — previous tick still running');

@@ -1,54 +1,118 @@
 [
   {
-    "id": "restart-internet",
-    "tags": ["internet", "conexión", "no carga", "lento", "no funciona", "error de red"],
-    "question": "El sistema no carga o va lento",
-    "answer": "Cuando el sistema no carga o responde lento, generalmente es un problema de conexión a internet. Probá los siguientes pasos:",
+    "id": "propuestas-generales",
+    "tags": ["propuestas", "plataforma", "qué proponen", "ideas", "plan", "programa"],
+    "question": "¿Cuáles son las propuestas de la Lista 26 Roja?",
+    "answer": "La Lista 26 Roja tiene 5 ejes de acción:\n1. Financiamiento real para los talleres (Fondo Provincial de Educación Técnica)\n2. Actualización académica con IA, robótica y energías renovables\n3. Defensa del Decreto 4659/12 y condiciones laborales dignas\n4. Bienestar del afiliado y su familia\n5. Bolsa de Trabajo Técnica y convenios con empresas",
+    "steps": []
+  },
+  {
+    "id": "fondo-educacion-tecnica",
+    "tags": ["fondo", "insumos", "talleres", "herramientas", "equipamiento", "maquinaria", "financiamiento"],
+    "question": "¿Qué proponen para los talleres y el equipamiento?",
+    "answer": "Proponemos crear el Fondo Provincial de Educación Técnica para garantizar herramientas, maquinaria, insumos y mantenimiento real en los talleres. La escuela técnica no puede depender del esfuerzo docente para sostenerse.",
+    "steps": []
+  },
+  {
+    "id": "decreto-4659",
+    "tags": ["decreto", "4659", "4659/12", "cargos", "horas", "reconocimiento", "rm 5136", "normativa"],
+    "question": "¿Qué pasa con el Decreto 4659/12?",
+    "answer": "El Decreto 4659/12 reconoce los cargos específicos del docente técnico. La Lista 26 Roja defiende ese decreto sin concesiones y propone además revisar la RM 5136 para que todos los cargos y horas se reconozcan como corresponde.",
+    "steps": []
+  },
+  {
+    "id": "actualizacion-academica",
+    "tags": ["ia", "inteligencia artificial", "robótica", "robótica", "programación", "energías renovables", "actualización", "formación docente", "capacitación"],
+    "question": "¿Qué proponen para la actualización de los docentes?",
+    "answer": "Proponemos reforma curricular incorporando IA, robótica, programación y energías renovables, más capacitación docente con validez ministerial. El taller y el aula tienen que mirar al mundo productivo de hoy.",
+    "steps": []
+  },
+  {
+    "id": "bienestar-afiliado",
+    "tags": ["bienestar", "salud", "recreación", "deporte", "familia", "convenios de salud", "salón", "infraestructura gremial"],
+    "question": "¿Qué proponen para el bienestar del afiliado?",
+    "answer": "Proponemos infraestructura gremial real: salón de usos múltiples, centro deportivo y convenios de salud integral para el afiliado y su familia. El gremio tiene que acompañar la vida del compañero, no solo aparecer en el conflicto.",
+    "steps": []
+  },
+  {
+    "id": "bolsa-trabajo",
+    "tags": ["bolsa de trabajo", "empleo", "pymes", "minería", "prácticas", "profesionalizantes", "convenios", "empresas"],
+    "question": "¿Qué proponen para el desarrollo del sector técnico?",
+    "answer": "Proponemos una Bolsa de Trabajo Técnica Provincial, protocolos de seguridad obligatorios y convenios con empresas mineras y PYMES para prácticas profesionalizantes. La educación técnica tiene que estar en la mesa donde se decide el futuro productivo de Salta.",
+    "steps": []
+  },
+  {
+    "id": "quien-encabeza",
+    "tags": ["quién encabeza", "quién es", "candidato", "secretario general", "rene", "tarifa", "conductor", "lista"],
+    "question": "¿Quién encabeza la Lista 26 Roja?",
+    "answer": "La Lista 26 Roja está encabezada por René Leonardo Tarifa Durán como Secretario General, junto a Jorge Bruno Cani (Secretario Adjunto) y Cristian Maximiliano Raffo (Relaciones Gremiales). Son docentes de AMET Regional XIII Salta que conocen la escuela técnica desde adentro.",
+    "steps": []
+  },
+  {
+    "id": "lista-completa",
+    "tags": ["lista completa", "candidatos", "integrantes", "todos los nombres", "quiénes son", "vocales"],
+    "question": "¿Quiénes integran la Lista 26 Roja completa?",
+    "answer": "1. René Leonardo Tarifa Durán — Secretario General\n2. Jorge Bruno Cani — Secretario Adjunto\n3. Cristian Maximiliano Raffo — Relaciones Gremiales\n4. Juan Antonio Zenteno — Administrativo y Actas\n5. Rosa Malvina Villegran Martínez — Prensa y Propaganda\n6. Diego Maximiliano Julia — Finanzas\n7. Estela Alejandra Méndez — Subfinanzas\n8. Juan Carlos Valencia García — Cultura\n9. Néstor Juan Pérez — Acción Social y Previsión\n10. Alejandra Victoria Sánchez — Secretaria de la Mujer\n11. Carina Paola Contreras — Primera Vocal Suplente\n12. Jorge Ariel Gorena — Segundo Vocal Suplente\n13. María Clara García — Tercera Vocal Suplente\n14. María Liliana Fernández — Cuarta Vocal Suplente\n15. Zulma Fabiana Celiz — Quinta Vocal Suplente\n16. Matías Gonzalo Suárez — Sexto Vocal Suplente",
+    "steps": []
+  },
+  {
+    "id": "cuando-elecciones",
+    "tags": ["cuándo", "fecha", "elecciones", "5 de mayo", "mayo", "2026", "votación", "día"],
+    "question": "¿Cuándo son las elecciones de AMET?",
+    "answer": "Las elecciones gremiales de AMET Regional XIII Salta son el 5 de mayo de 2026. Ese día los afiliados elegimos la conducción del gremio.",
+    "steps": []
+  },
+  {
+    "id": "donde-voto",
+    "tags": ["dónde voto", "mesa", "establecimiento", "padrón", "consulta", "mi mesa", "dirección", "dnI"],
+    "question": "¿Dónde voto y cómo consulto mi mesa?",
+    "answer": "Podés consultar tu establecimiento, número de mesa y dirección en la sección Mi Mesa del sitio. Ingresás tu DNI sin puntos ni espacios y el sistema te muestra la información. El día de la elección llevá tu documento original.",
     "steps": [
-      "Cerrá el navegador completamente y volvé a abrirlo",
-      "Verificá que tu conexión a internet esté funcionando (abrí otra página)",
-      "Reiniciá el router: desenchufalo 10 segundos y volvé a enchufarlo",
-      "Esperá 1 minuto y probá nuevamente",
-      "Si el problema persiste, probá desde otro dispositivo o red"
+      "Ingresá a https://plataformalista26.vercel.app/consulta-mesa",
+      "Escribí tu DNI sin puntos ni espacios",
+      "El sistema te mostrará tu establecimiento, mesa y dirección"
     ]
   },
   {
-    "id": "login-issues",
-    "tags": ["contraseña", "no puedo entrar", "usuario", "login", "acceso", "olvidé"],
-    "question": "No puedo iniciar sesión o olvidé mi contraseña",
-    "answer": "Para problemas de acceso al sistema, seguí estos pasos:",
-    "steps": [
-      "Verificá que el usuario y contraseña estén escritos correctamente (sin espacios extra)",
-      "Asegurate que las mayúsculas estén correctas (la contraseña distingue mayúsculas y minúsculas)",
-      "Probá el botón 'Olvidé mi contraseña' si está disponible",
-      "Limpiá la caché del navegador (Ctrl+Shift+Delete) y volvé a intentar",
-      "Si seguís sin poder entrar, avisame y te ayudo a resetear el acceso"
-    ]
+    "id": "como-ser-fiscal",
+    "tags": ["fiscal", "fiscalizar", "mesa", "cuidar el voto", "transparencia", "sumarme", "registrarme"],
+    "question": "¿Cómo puedo ser fiscal de la Lista 26 Roja?",
+    "answer": "Ser fiscal es cuidar que cada voto se respete. No hace falta ser experto, solo compromiso y ganas de defender una elección transparente. Podés registrarte en https://plataformalista26.vercel.app/sumate-como-fiscal",
+    "steps": []
   },
   {
-    "id": "browser-compatibility",
-    "tags": ["navegador", "chrome", "firefox", "no se ve bien", "pantalla", "roto"],
-    "question": "El sistema no se ve bien o hay elementos rotos en pantalla",
-    "answer": "Problemas de visualización generalmente se resuelven así:",
-    "steps": [
-      "Usá Google Chrome o Firefox actualizados (son los navegadores recomendados)",
-      "Presioná Ctrl+F5 para forzar una recarga completa de la página",
-      "Limpiá la caché: Ctrl+Shift+Delete → seleccioná 'Imágenes y archivos en caché' → Borrar",
-      "Verificá que el zoom del navegador esté al 100% (Ctrl+0)",
-      "Si usás Internet Explorer o Edge antiguo, cambiá a Chrome"
-    ]
+    "id": "por-que-votar-lista26",
+    "tags": ["por qué votar", "razones", "motivos", "convencerme", "1 minuto", "resumen rápido"],
+    "question": "¿Por qué votar a la Lista 26 Roja?",
+    "answer": "Porque somos docentes de taller y aula, y sabemos lo que pasa cuando faltan insumos, cuando los cargos no se reconocen y cuando el gremio no aparece. La Lista 26 Roja quiere poner esas necesidades en el centro con propuestas reales. Hasta ahora muchas cosas no cambiaron. El 5 de mayo es una oportunidad concreta.",
+    "steps": []
   },
   {
-    "id": "data-not-saving",
-    "tags": ["no guarda", "perdí datos", "no se guardó", "guardar", "se borró"],
-    "question": "Los datos no se guardan o se perdieron",
-    "answer": "Cuando los datos no se guardan correctamente:",
-    "steps": [
-      "Verificá que hayas presionado el botón Guardar/Confirmar antes de cerrar",
-      "Revisá tu conexión a internet — si se cortó mientras guardabas, los datos no se registraron",
-      "No cierres ni recargues la página mientras estás cargando datos importantes",
-      "Verificá en el listado si los datos están (a veces se guardan pero no se ven por un filtro activo)",
-      "Si perdiste datos importantes, avisame con el detalle para intentar recuperarlos"
-    ]
+    "id": "no-quiero-mensajes",
+    "tags": ["baja", "stop", "no quiero", "no me escribas", "darme de baja", "no mas mensajes", "sacarme"],
+    "question": "¿Cómo me doy de baja para no recibir más mensajes?",
+    "answer": "Respetamos tu decisión. Escribí 'baja', 'stop' o 'no quiero más mensajes' y no volvemos a escribirte. El sitio de la Lista siempre va a estar disponible por si en algún momento querés conocer la propuesta.",
+    "steps": []
+  },
+  {
+    "id": "que-es-amet",
+    "tags": ["qué es amet", "amet", "gremio", "asociación", "docentes técnicos", "educación técnica"],
+    "question": "¿Qué es AMET?",
+    "answer": "AMET (Asociación de Maestros de Enseñanza Técnica) es el gremio que nuclea a docentes de la educación técnica en Argentina. La Regional XIII corresponde a Salta y organiza las elecciones de conducción.",
+    "steps": []
+  },
+  {
+    "id": "contacto-lista",
+    "tags": ["contacto", "hablar", "comunicarme", "teléfono", "llamar", "persona de la lista", "rene", "oscar"],
+    "question": "¿Cómo me comunico con alguien de la Lista?",
+    "answer": "Podés dejar tu mensaje desde el formulario web o escribirme acá y yo se lo hago llegar. También podés contactar directamente desde: https://plataformalista26.vercel.app/contacto",
+    "steps": []
+  },
+  {
+    "id": "instagram-redes",
+    "tags": ["instagram", "redes sociales", "difundir", "compartir", "seguir", "web", "sitio"],
+    "question": "¿Dónde encuentro las redes y el sitio de la Lista 26 Roja?",
+    "answer": "Sitio oficial: https://plataformalista26.vercel.app/\nInstagram: https://www.instagram.com/lista26roja/\n\nCompartilo con compañeros de taller y aula. Cada difusión ayuda.",
+    "steps": []
   }
 ]

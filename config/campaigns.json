@@ -1,49 +1,25 @@
 [
   {
-    "id": "good-morning",
-    "name": "Presentacion inicial",
+    "id": "campana-1-presentacion",
+    "name": "Campaña 1 — Presentación de Evangelina",
     "enabled": false,
     "audience": {
       "mode": "all"
     },
-    "aiPrompt": "Escribi un mensaje de WhatsApp para {name}, de {company}. Debe ser calido, breve y abrir la puerta a que responda consultas.",
-    "systemPrompt": "Sos el asistente del bot. Escribis mensajes naturales, claros y respetuosos.",
+    "messageMode": "template",
+    "template": "Hola {name}, soy *Evangelina*, asistente IA de la *Lista 26 Roja — Dignidad y Trabajo*.\n\nTe escribo porque el *5 de mayo* los afiliados de AMET Regional XIII Salta elegimos conducción, y queremos que conozcas una propuesta hecha por docentes de taller y aula.\n\n¿Querés que te cuente más sobre las propuestas, la lista o dónde votás?\n\n🌐 https://plataformalista26.vercel.app/?utm_source=whatsapp&utm_campaign=evangelina_campana1",
     "rateLimit": {
       "delayMs": 4000,
-      "maxPerRun": 100
-    },
-    "retry": {
-      "maxAttempts": 3,
-      "backoffMs": 3000
-    },
-    "optOut": {
-      "enabled": true,
-      "keywords": [
-        "baja",
-        "stop",
-        "no quiero",
-        "no me escribas"
-      ],
-      "confirmationMessage": "Listo, no vamos a enviarte mas mensajes de campana."
-    }
-  },
-  {
-    "id": "lista-26-roja",
-    "name": "Lista 26 Roja - Dignidad y Trabajo - AMET",
-    "enabled": false,
-    "audience": {
-      "mode": "all"
-    },
-    "messageMode": "ai",
-    "aiPrompt": "Escribí un mensaje de WhatsApp personalizado para {name}, afiliado/a de AMET (Asociación de Maestros de Enseñanza Técnica). El objetivo es que vote y difunda la *Lista 26 Roja — Dignidad y Trabajo* en las elecciones gremiales del *5 de mayo*.\n\nAplicá estas técnicas en orden dentro del mensaje:\n1. PERTENENCIA — Abrí nombrando a {name} y creando identidad compartida: somos docentes de taller y aula, sabemos lo que es esa realidad.\n2. DOLOR COMPARTIDO — Nombrá brevemente un problema concreto que vive el docente técnico (talleres sin insumos, cargos mal reconocidos, conducción ausente) sin nombrar a nadie específico. Hacé que {name} sienta que alguien lo/la entiende.\n3. ESPERANZA + CONTRASTE — Presentá la Lista 26 Roja como la opción que viene a cambiar eso, con propuestas reales. Usá contraste implícito: 'hasta ahora nada cambió — nosotros lo ponemos en el centro'.\n4. URGENCIA — Mencioná que el *5 de mayo* está cerca y que cada voto cuenta. Creá sensación de que no votar es perder una oportunidad real.\n5. PRUEBA SOCIAL — Sumá una frase que dé sensación de movimiento: 'cada vez más compañeros se suman', 'la propuesta está llegando a las escuelas'.\n6. LLAMADO A LA ACCIÓN — Cerrá invitando a conocer la propuesta y a difundirla entre compañeros.\n\nAl final, incluí siempre estas dos líneas exactas sin modificarlas:\n🌐 https://plataformalista26.vercel.app/\n📸 https://www.instagram.com/lista26roja/\n\nTono: argentino auténtico, tuteo, lenguaje de compañero de taller — nunca político de escenario ni corporativo. Sin hashtags. Máximo 2 emojis en el cuerpo. Extensión: 5 a 7 oraciones en el cuerpo, fluidas y naturales.",
-    "systemPrompt": "Sos un compañero/a docente de taller y aula que milita en la *Lista 26 Roja — Dignidad y Trabajo* del gremio AMET. Escribís mensajes de WhatsApp para llegar a afiliados antes de las elecciones del 5 de mayo. Tu escritura es argentina auténtica: usás 'vos', 'compañero/a', frases cortas, sin grandilocuencia. Aplicás psicología de persuasión: identidad compartida, dolor reconocido, esperanza concreta, urgencia real y prueba social. Nunca sonás a político ni a vendedor. Siempre terminás con el sitio web y el Instagram.",
-    "rateLimit": {
-      "delayMs": 5000,
       "maxPerRun": 200
     },
     "retry": {
       "maxAttempts": 3,
       "backoffMs": 5000
+    },
+    "schedule": {
+      "allowedHoursStart": 8,
+      "allowedHoursEnd": 21,
+      "timezone": "America/Argentina/Salta"
     },
     "optOut": {
       "enabled": true,
@@ -52,20 +28,138 @@
         "stop",
         "no quiero",
         "no me escribas",
-        "no mas mensajes"
+        "no mas mensajes",
+        "no quiero más mensajes",
+        "quiero darme de baja",
+        "sacarme de la lista",
+        "no me molestes"
       ],
-      "confirmationMessage": "Entendido, no te vamos a enviar mas mensajes. Gracias por tu tiempo, compañero/a."
+      "confirmationMessage": "Entendido, compañero/a. No vamos a enviarte más mensajes. Gracias por tu tiempo. Si en algún momento querés conocer la propuesta, el sitio está siempre disponible: https://plataformalista26.vercel.app/"
     }
   },
   {
-    "id": "lista-26-roja-template",
-    "name": "Lista 26 Roja - Mensaje Fijo (template)",
-    "enabled": true,
+    "id": "campana-2-propuestas",
+    "name": "Campaña 2 — Propuestas concretas",
+    "enabled": false,
     "audience": {
       "mode": "all"
     },
     "messageMode": "template",
-    "template": "Hola {name}, soy Evangelina, asistente IA de la *Lista 26 Roja — Dignidad y Trabajo*.\nComo docentes de taller y aula sabemos lo que es sostener la escuela técnica todos los días, muchas veces con pocos recursos y mucho esfuerzo.\nTambién sabemos lo que duele trabajar con talleres sin insumos, cargos mal reconocidos y una conducción que muchas veces no está cuando el compañero la necesita.\nPor eso la *Lista 26 Roja* quiere poner al docente técnico en el centro, con propuestas reales y presencia en las escuelas, porque hasta ahora muchas cosas no cambiaron y esta vez podemos empezar a cambiarlas.\nEl *5 de mayo* está muy cerca, y cada voto cuenta: no participar es dejar pasar una oportunidad concreta de defender lo nuestro.\nCada vez más compañeros se están sumando y la propuesta ya está llegando a las escuelas.\n¿Querés que te cuente un poco más sobre las propuestas, la lista o dónde votás?\n---\n🌐 https://plataformalista26.vercel.app/\n📸 https://www.instagram.com/lista26roja/",
+    "template": "Hola {name}, una de las propuestas centrales de la *Lista 26 Roja* es crear el *Fondo Provincial de Educación Técnica*, para que los talleres tengan herramientas, insumos y equipamiento real.\n\nNo se puede seguir sosteniendo la escuela técnica solo con esfuerzo docente.\n\nEl *5 de mayo* podemos empezar a cambiar eso. ¿Querés saber más?\n\n🌐 https://plataformalista26.vercel.app/plataforma?utm_source=whatsapp&utm_campaign=evangelina_campana2",
+    "rateLimit": {
+      "delayMs": 4000,
+      "maxPerRun": 200
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": 5000
+    },
+    "schedule": {
+      "allowedHoursStart": 8,
+      "allowedHoursEnd": 21,
+      "timezone": "America/Argentina/Salta"
+    },
+    "optOut": {
+      "enabled": true,
+      "keywords": [
+        "baja",
+        "stop",
+        "no quiero",
+        "no me escribas",
+        "no mas mensajes",
+        "no quiero más mensajes",
+        "quiero darme de baja",
+        "sacarme de la lista",
+        "no me molestes"
+      ],
+      "confirmationMessage": "Entendido, compañero/a. No vamos a enviarte más mensajes. Gracias por tu tiempo."
+    }
+  },
+  {
+    "id": "campana-3-consulta-mesa",
+    "name": "Campaña 3 — Consulta de mesa",
+    "enabled": false,
+    "audience": {
+      "mode": "all"
+    },
+    "messageMode": "template",
+    "template": "Hola {name}, falta poco para el *5 de mayo*. Ya podés consultar dónde votás desde la sección *Mi Mesa*.\n\nEs simple: ingresás tu DNI sin puntos ni espacios y revisás tu establecimiento, mesa y dirección.\n\n🌐 https://plataformalista26.vercel.app/consulta-mesa?utm_source=whatsapp&utm_campaign=evangelina_campana3\n\nSi tenés alguna duda, escribime y te ayudo.",
+    "rateLimit": {
+      "delayMs": 4000,
+      "maxPerRun": 200
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": 5000
+    },
+    "schedule": {
+      "allowedHoursStart": 8,
+      "allowedHoursEnd": 21,
+      "timezone": "America/Argentina/Salta"
+    },
+    "optOut": {
+      "enabled": true,
+      "keywords": [
+        "baja",
+        "stop",
+        "no quiero",
+        "no me escribas",
+        "no mas mensajes",
+        "no quiero más mensajes",
+        "quiero darme de baja",
+        "sacarme de la lista",
+        "no me molestes"
+      ],
+      "confirmationMessage": "Entendido, compañero/a. No vamos a enviarte más mensajes. Gracias por tu tiempo."
+    }
+  },
+  {
+    "id": "campana-4-fiscales",
+    "name": "Campaña 4 — Convocatoria de fiscales",
+    "enabled": false,
+    "audience": {
+      "mode": "all"
+    },
+    "messageMode": "template",
+    "template": "Hola {name}, necesitamos *fiscales* para cuidar cada voto de la *Lista 26 Roja* el *5 de mayo*.\n\nSer fiscal es garantizar una elección transparente. No hace falta experiencia, solo compromiso y ganas de que los votos se cuenten bien.\n\nSi podés acompañar ese día, tu presencia es muy importante.\n\n🌐 https://plataformalista26.vercel.app/sumate-como-fiscal?utm_source=whatsapp&utm_campaign=evangelina_campana4",
+    "rateLimit": {
+      "delayMs": 4000,
+      "maxPerRun": 200
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": 5000
+    },
+    "schedule": {
+      "allowedHoursStart": 8,
+      "allowedHoursEnd": 21,
+      "timezone": "America/Argentina/Salta"
+    },
+    "optOut": {
+      "enabled": true,
+      "keywords": [
+        "baja",
+        "stop",
+        "no quiero",
+        "no me escribas",
+        "no mas mensajes",
+        "no quiero más mensajes",
+        "quiero darme de baja",
+        "sacarme de la lista",
+        "no me molestes"
+      ],
+      "confirmationMessage": "Entendido, compañero/a. No vamos a enviarte más mensajes. Gracias por tu tiempo."
+    }
+  },
+  {
+    "id": "campana-5-urgencia",
+    "name": "Campaña 5 — Últimas 48 horas",
+    "enabled": false,
+    "audience": {
+      "mode": "all"
+    },
+    "messageMode": "template",
+    "template": "{name}, estamos a horas del *5 de mayo*. Cada voto cuenta y esta vez tenemos una oportunidad real de cambiar la representación de AMET.\n\nConsultá dónde votás si todavía no lo hiciste:\n🌐 https://plataformalista26.vercel.app/consulta-mesa?utm_source=whatsapp&utm_campaign=evangelina_campana5\n\nY si conocés un compañero que todavía no decidió, compartile la propuesta. Un voto más puede ser el que haga la diferencia.",
     "rateLimit": {
       "delayMs": 3000,
       "maxPerRun": 200
@@ -74,6 +168,11 @@
       "maxAttempts": 3,
       "backoffMs": 5000
     },
+    "schedule": {
+      "allowedHoursStart": 8,
+      "allowedHoursEnd": 21,
+      "timezone": "America/Argentina/Salta"
+    },
     "optOut": {
       "enabled": true,
       "keywords": [
@@ -81,9 +180,52 @@
         "stop",
         "no quiero",
         "no me escribas",
-        "no mas mensajes"
+        "no mas mensajes",
+        "no quiero más mensajes",
+        "quiero darme de baja",
+        "sacarme de la lista",
+        "no me molestes"
       ],
-      "confirmationMessage": "Entendido, no te vamos a enviar mas mensajes. Gracias por tu tiempo, compañero/a."
+      "confirmationMessage": "Entendido, compañero/a. No vamos a enviarte más mensajes. Gracias por tu tiempo."
+    }
+  },
+  {
+    "id": "lista-26-roja-ai",
+    "name": "Lista 26 Roja — Mensaje IA personalizado",
+    "enabled": false,
+    "audience": {
+      "mode": "all"
+    },
+    "messageMode": "ai",
+    "aiPrompt": "Escribí un mensaje de WhatsApp personalizado para {name}, afiliado/a de AMET (Asociación de Maestros de Enseñanza Técnica). El objetivo es que vote y difunda la *Lista 26 Roja — Dignidad y Trabajo* en las elecciones gremiales del *5 de mayo*.\n\nAplicá estas técnicas en orden dentro del mensaje:\n1. PERTENENCIA — Abrí nombrando a {name} y creando identidad compartida: somos docentes de taller y aula, sabemos lo que es esa realidad.\n2. DOLOR COMPARTIDO — Nombrá brevemente un problema concreto que vive el docente técnico (talleres sin insumos, cargos mal reconocidos, conducción ausente) sin nombrar a nadie específico.\n3. ESPERANZA + CONTRASTE — Presentá la Lista 26 Roja como la opción que viene a cambiar eso, con propuestas reales.\n4. URGENCIA — Mencioná que el *5 de mayo* está cerca y que cada voto cuenta.\n5. PRUEBA SOCIAL — Sumá una frase que dé sensación de movimiento: 'cada vez más compañeros se suman'.\n6. LLAMADO A LA ACCIÓN — Cerrá invitando a conocer la propuesta y a difundirla.\n\nAl final incluí estas dos líneas exactas:\n🌐 https://plataformalista26.vercel.app/?utm_source=whatsapp&utm_campaign=evangelina_ai\n📸 https://www.instagram.com/lista26roja/\n\nTono: argentino auténtico, tuteo, lenguaje de compañero de taller. Sin hashtags. Máximo 2 emojis en el cuerpo. 5 a 7 oraciones fluidas.",
+    "systemPrompt": "Sos un compañero/a docente de taller y aula que milita en la *Lista 26 Roja — Dignidad y Trabajo* del gremio AMET. Escribís mensajes de WhatsApp para llegar a afiliados antes de las elecciones del 5 de mayo. Tu escritura es argentina auténtica: usás 'vos', 'compañero/a', frases cortas. Aplicás psicología de persuasión: identidad compartida, dolor reconocido, esperanza concreta, urgencia real y prueba social. Nunca sonás a político ni a vendedor.",
+    "rateLimit": {
+      "delayMs": 5000,
+      "maxPerRun": 200
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": 5000
+    },
+    "schedule": {
+      "allowedHoursStart": 8,
+      "allowedHoursEnd": 21,
+      "timezone": "America/Argentina/Salta"
+    },
+    "optOut": {
+      "enabled": true,
+      "keywords": [
+        "baja",
+        "stop",
+        "no quiero",
+        "no me escribas",
+        "no mas mensajes",
+        "no quiero más mensajes",
+        "quiero darme de baja",
+        "sacarme de la lista",
+        "no me molestes"
+      ],
+      "confirmationMessage": "Entendido, compañero/a. No vamos a enviarte más mensajes. Gracias por tu tiempo."
     }
   }
 ]

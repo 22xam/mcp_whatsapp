@@ -799,3 +799,44 @@ th {
     max-height: 95vh;
   }
 }
+
+/* ── Consola ─────────────────────────────────────────────── */
+.console-output {
+  background: #0f1a14;
+  color: #d4e8d4;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 10px 14px;
+  border-radius: 6px;
+  min-height: 420px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.console-row {
+  display: grid;
+  grid-template-columns: 72px 58px 160px 1fr;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.console-ts    { color: #6b8f6b; flex-shrink: 0; }
+.console-level { font-weight: 700; flex-shrink: 0; }
+.console-ctx   { color: #8ab08a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console-msg   { color: #d4e8d4; }
+
+.log-info  .console-level { color: #6bbf6b; }
+.log-warn  .console-level { color: #e8c06b; }
+.log-warn  .console-msg   { color: #e8c06b; }
+.log-error .console-level { color: #e87070; }
+.log-error .console-msg   { color: #e87070; }
+.log-debug .console-level { color: #7ab0c8; }
+.log-debug .console-msg   { color: #8aafbf; }
+
+.btn-ok   { background: var(--accent); color: #fff; }
+.btn-danger { background: var(--accent-2); color: #fff; }
+.btn-test { background: #7c3aed; color: #fff; }

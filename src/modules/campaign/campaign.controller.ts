@@ -84,4 +84,18 @@ export class CampaignController {
   processQueued() {
     return this.campaignWorker.tick();
   }
+
+  /** Crea una corrida y procesa el primer job inmediatamente, ignorando ventana horaria.
+   *  Solo para testing desde el panel. */
+  @Post('campaigns/:id/send-now')
+  async sendNow(
+    @Param('id') id: string,
+    @Body() body: { phones?: string[] },
+  ) {
+    const run = await this.campaignService.createRun(id, body?.phones, false);
+    if (!run) throw new Error('No se pudo crear la corrida');
+    const result = await this.campaignWorker.tickForced(run.id);
+    const updated = this.campaignService.getRun(run.id);
+    return { run: updated, processed: result.processed, blocked: result.blocked };
+  }
 }

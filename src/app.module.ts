@@ -39,5 +39,6 @@ import { AdminAuthGuard } from './modules/core/guards/admin-auth.guard';
       useClass: AdminAuthGuard,
     },
   ],
+  exports: [ApiModule],
 })
 export class AppModule {}

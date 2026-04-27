@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "mcp": "node dist/mcp/whatsapp-mcp-server.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -31,6 +32,7 @@
   "dependencies": {
     "@google/genai": "^1.50.1",
     "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",

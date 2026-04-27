@@ -21,7 +21,7 @@ export class GeminiProvider implements AIProvider, OnModuleInit {
     this.modelName = this.configLoader.botConfig.ai.model;
     this.embeddingModelName = this.configLoader.botConfig.ai.embeddingModel;
     if (this.botConfig.aiProvider === 'gemini') {
-      this.genAI = new GoogleGenAI({ apiKey: this.requireApiKey() });
+      this.genAI = new GoogleGenAI({ apiKey: this.requireApiKey(), apiVersion: 'v1' });
     }
     this.logger.log(`Gemini initialized - model: ${this.modelName}`);
   }
@@ -94,7 +94,7 @@ export class GeminiProvider implements AIProvider, OnModuleInit {
 
   private getClient(): GoogleGenAI {
     if (!this.genAI) {
-      this.genAI = new GoogleGenAI({ apiKey: this.requireApiKey() });
+      this.genAI = new GoogleGenAI({ apiKey: this.requireApiKey(), apiVersion: 'v1' });
     }
     return this.genAI;
   }

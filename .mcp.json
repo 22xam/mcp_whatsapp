@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "whatsapp": {
+      "command": "node",
+      "args": ["d:\\sistemas_git\\bot_oscar\\bug-mate\\dist\\mcp\\whatsapp-mcp-server.js"],
+      "env": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    }
+  }
+}

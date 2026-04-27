@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Res, Sse } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Optional, Param, Post, Query, Res, Sse } from '@nestjs/common';
 import type { Response } from 'express';
 import { map } from 'rxjs/operators';
+import { LogBufferService } from './log-buffer.service';
 import { SessionService } from '../session/session.service';
 import { ConfigLoaderService } from '../config/config-loader.service';
 import { BotConfigService } from '../config/bot-config.service';
@@ -40,6 +41,7 @@ export class ApiController {
     private readonly openRouterProvider: OpenRouterProvider,
     private readonly auditService: AuditService,
     private readonly messageStore: MessageStoreService,
+    @Optional() @Inject(LogBufferService) private readonly logBuffer: LogBufferService,
   ) {}
 
   // ─── Status ──────────────────────────────────────────────────
@@ -346,6 +348,22 @@ export class ApiController {
     res.setHeader('X-Accel-Buffering', 'no');
     return this.messageStore.events$.pipe(
       map((msg) => ({ data: JSON.stringify(msg) })),
+    );
+  }
+
+  // ─── Logs ────────────────────────────────────────────────────
+
+  @Get('logs')
+  getLogs(@Query('limit') limit?: string) {
+    return this.logBuffer?.getRecent(limit ? Number(limit) : 200) ?? [];
+  }
+
+  @Sse('logs/stream')
+  streamLogs(@Res() res: Response) {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    return (this.logBuffer?.events$ ?? new (require('rxjs').Subject)()).pipe(
+      map((entry) => ({ data: JSON.stringify(entry) })),
     );
   }
 

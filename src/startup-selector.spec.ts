@@ -7,7 +7,9 @@ describe('runStartupSelector', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    stdoutSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -21,21 +23,30 @@ describe('runStartupSelector', () => {
 
   it('skips the interactive selector in CI', async () => {
     process.env.CI = 'true';
-    Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: true,
+      configurable: true,
+    });
 
-    await expect(runStartupSelector()).resolves.toBeUndefined();
+    await expect(runStartupSelector()).resolves.toBe('bot');
   });
 
   it('skips the interactive selector when explicitly disabled', async () => {
     process.env.BOT_OSCAR_SKIP_STARTUP_SELECTOR = '1';
-    Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: true,
+      configurable: true,
+    });
 
-    await expect(runStartupSelector()).resolves.toBeUndefined();
+    await expect(runStartupSelector()).resolves.toBe('bot');
   });
 
   it('skips the interactive selector without a TTY', async () => {
-    Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true });
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: false,
+      configurable: true,
+    });
 
-    await expect(runStartupSelector()).resolves.toBeUndefined();
+    await expect(runStartupSelector()).resolves.toBe('bot');
   });
 });

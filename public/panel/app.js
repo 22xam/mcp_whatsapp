@@ -8,9 +8,14 @@ const state = {
   audit: [],
   wa: {
     activeSenderId: null,
-    messages: [],        // all buffered messages (full history load)
+    messages: [],
     senders: [],
     sse: null,
+  },
+  console: {
+    entries: [],
+    sse: null,
+    paused: false,
   },
 };
 
@@ -23,6 +28,7 @@ const views = {
   mensajes: ['Mensajes', 'Conversaciones en tiempo real — vista WhatsApp.'],
   sessions: ['Sesiones', 'Conversaciones activas y pausas manuales.'],
   audit: ['Auditoría', 'Trazabilidad reciente de acciones del sistema.'],
+  consola: ['Consola', 'Logs en tiempo real del servidor.'],
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -68,6 +74,7 @@ async function refreshCurrent() {
   if (active === 'mensajes') return loadMensajes();
   if (active === 'sessions') return loadSessions();
   if (active === 'audit') return loadAudit();
+  if (active === 'consola') return loadConsola();
 }
 
 async function loadDashboard() {
@@ -157,14 +164,18 @@ async function loadCampaigns() {
       const modePill = mode === 'template'
         ? '<span class="pill pill-template">Fijo</span>'
         : '<span class="pill pill-ai">IA</span>';
+      const toggleLabel = campaign.enabled ? 'Desactivar' : 'Activar';
+      const toggleClass = campaign.enabled ? 'btn-danger' : 'btn-ok';
       return [
         campaign.id,
         campaign.name,
         modePill,
         campaign.enabled ? '<span class="pill">activa</span>' : '<span class="pill danger">inactiva</span>',
         `<div class="row-actions">
+          <button data-action="toggle-campaign" data-id="${campaign.id}" data-enabled="${campaign.enabled}" class="${toggleClass}">${toggleLabel}</button>
           <button data-action="preview-campaign" data-id="${campaign.id}">Preview</button>
           <button data-action="run-campaign" data-id="${campaign.id}">Crear corrida</button>
+          <button data-action="send-now" data-id="${campaign.id}" class="btn-test" title="Envía ahora ignorando ventana horaria (solo para testing)">⚡ Enviar ahora</button>
         </div>`,
       ];
     }),
@@ -251,6 +262,12 @@ async function handleAction(event) {
       toast(`${result.processed} jobs procesados`);
       await loadDashboard();
     }
+    if (action === 'toggle-campaign') {
+      const nowEnabled = button.dataset.enabled === 'true';
+      await api(`/api/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled: !nowEnabled }) });
+      toast(`Campaña ${!nowEnabled ? 'activada' : 'desactivada'}`);
+      await loadCampaigns();
+    }
     if (action === 'preview-campaign') {
       const result = await api(`/api/campaigns/${id}/preview`, { method: 'POST', body: JSON.stringify({ limit: 5 }) });
       $('#runDetail').innerHTML = table(['Teléfono', 'Nombre', 'Mensaje'], result.map((item) => [item.phone, item.name || '-', item.message || item.reason || '-']));
@@ -258,6 +275,13 @@ async function handleAction(event) {
     if (action === 'run-campaign') {
       const run = await api(`/api/campaigns/${id}/runs`, { method: 'POST', body: JSON.stringify({}) });
       toast(`Corrida creada ${short(run.id)}`);
+      await loadCampaignRuns();
+    }
+    if (action === 'send-now') {
+      const result = await api(`/api/campaigns/${id}/send-now`, { method: 'POST', body: JSON.stringify({}) });
+      const jobsSent = result.run?.totals?.sent ?? 0;
+      const jobsQueued = result.run?.totals?.queued ?? 0;
+      toast(`⚡ Enviado: ${jobsSent} mensajes, en cola: ${jobsQueued}`);
       await loadCampaignRuns();
     }
     if (action === 'show-run') await showRun(id);
@@ -277,6 +301,10 @@ async function handleAction(event) {
       await loadSessions();
     }
     if (action === 'load-audit') await loadAudit();
+    if (action === 'clear-console') {
+      state.console.entries = [];
+      renderConsole();
+    }
   } catch (error) {
     toast(error.message || 'Error');
   }
@@ -514,6 +542,82 @@ function waTime(ts) {
   if (diffDays < 7) return d.toLocaleDateString('es-AR', { weekday: 'short' });
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 }
+
+// ── Consola ──────────────────────────────────────────────────
+
+async function loadConsola() {
+  const entries = await api('/api/logs?limit=200');
+  state.console.entries = entries;
+  renderConsole();
+  startConsoleSse();
+}
+
+function startConsoleSse() {
+  if (state.console.sse) return;
+  const url = state.token
+    ? `/api/logs/stream?token=${encodeURIComponent(state.token)}`
+    : '/api/logs/stream';
+  const sse = new EventSource(url);
+  state.console.sse = sse;
+  sse.onmessage = (event) => {
+    try {
+      const entry = JSON.parse(event.data);
+      state.console.entries.push(entry);
+      if (state.console.entries.length > 500) state.console.entries.shift();
+      if (!state.console.paused) appendConsoleRow(entry);
+    } catch { /* ignore */ }
+  };
+}
+
+function stopConsoleSse() {
+  if (state.console.sse) { state.console.sse.close(); state.console.sse = null; }
+}
+
+function levelClass(level) {
+  if (level === 'ERROR') return 'log-error';
+  if (level === 'WARN')  return 'log-warn';
+  if (level === 'DEBUG') return 'log-debug';
+  return 'log-info';
+}
+
+function renderConsole() {
+  const output = $('#consoleOutput');
+  if (!output) return;
+  const filterLevel = $('#consoleLevel')?.value || '';
+  const filterText  = ($('#consoleFilter')?.value || '').toLowerCase();
+  const filtered = state.console.entries.filter((e) => {
+    if (filterLevel && e.level !== filterLevel) return false;
+    if (filterText && !e.message.toLowerCase().includes(filterText) && !e.context.toLowerCase().includes(filterText)) return false;
+    return true;
+  });
+  output.innerHTML = filtered.map((e) => consoleRowHtml(e)).join('');
+  output.scrollTop = output.scrollHeight;
+}
+
+function consoleRowHtml(e) {
+  const time = new Date(e.ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return `<div class="console-row ${levelClass(e.level)}"><span class="console-ts">${escapeHtml(time)}</span><span class="console-level">${escapeHtml(e.level)}</span><span class="console-ctx">${escapeHtml(e.context)}</span><span class="console-msg">${escapeHtml(e.message)}</span></div>`;
+}
+
+function appendConsoleRow(entry) {
+  const output = $('#consoleOutput');
+  if (!output) return;
+  const filterLevel = $('#consoleLevel')?.value || '';
+  const filterText  = ($('#consoleFilter')?.value || '').toLowerCase();
+  if (filterLevel && entry.level !== filterLevel) return;
+  if (filterText && !entry.message.toLowerCase().includes(filterText) && !entry.context.toLowerCase().includes(filterText)) return;
+  output.insertAdjacentHTML('beforeend', consoleRowHtml(entry));
+  output.scrollTop = output.scrollHeight;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('#consolePause')?.addEventListener('change', (e) => {
+    state.console.paused = e.target.checked;
+    if (!state.console.paused) renderConsole();
+  });
+  $('#consoleLevel')?.addEventListener('change', renderConsole);
+  $('#consoleFilter')?.addEventListener('input', renderConsole);
+});
 
 // Stop SSE when leaving the mensajes view
 document.addEventListener('DOMContentLoaded', () => {

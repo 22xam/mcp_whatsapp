@@ -151,13 +151,23 @@ export class KnowledgeService implements OnModuleInit {
       'INSERT OR REPLACE INTO vectors (id, content, source, embedding) VALUES (?, ?, ?, ?)',
     );
 
+    let indexed = 0;
     for (const item of toIndex) {
-      const embedding = await this.embeddingProvider.embed(item.content);
-      const blob = Buffer.from(new Float32Array(embedding).buffer);
-      insert.run(item.id, item.content, item.source, blob);
+      try {
+        const embedding = await this.embeddingProvider.embed(item.content);
+        const blob = Buffer.from(new Float32Array(embedding).buffer);
+        insert.run(item.id, item.content, item.source, blob);
+        indexed++;
+      } catch (err) {
+        this.logger.warn(`Skipping chunk "${item.id}" — embedding failed: ${(err as Error).message}`);
+      }
     }
 
-    this.logger.log(`Indexed ${toIndex.length} chunks into knowledge base`);
+    if (indexed > 0) {
+      this.logger.log(`Indexed ${indexed}/${toIndex.length} chunks into knowledge base`);
+    } else {
+      this.logger.warn('No chunks indexed — embedding provider unavailable. FAQ keyword search still active.');
+    }
   }
 
   /** Force a full re-index of all knowledge documents (called via CLI). */
