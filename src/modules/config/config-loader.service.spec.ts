@@ -8,7 +8,10 @@ describe('ConfigLoaderService', () => {
   let cwdSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    tempDir = join(tmpdir(), `bot-oscar-config-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    tempDir = join(
+      tmpdir(),
+      `bot-oscar-config-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    );
     mkdirSync(join(tempDir, 'config', 'knowledge-docs'), { recursive: true });
     cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(tempDir);
   });
@@ -20,7 +23,9 @@ describe('ConfigLoaderService', () => {
 
   it('loads required config and treats campaigns.json as optional', () => {
     writeConfig('bot.config.json', { identity: { name: 'Bot' } });
-    writeConfig('clients.json', [{ phone: '5491111111111', name: 'Ana', company: 'ACME', systems: [] }]);
+    writeConfig('clients.json', [
+      { phone: '5491111111111', name: 'Ana', company: 'ACME', systems: [] },
+    ]);
     writeConfig('knowledge.json', []);
 
     const service = new ConfigLoaderService();
@@ -50,19 +55,27 @@ describe('ConfigLoaderService', () => {
     service.onModuleInit();
 
     expect(service.campaigns).toHaveLength(1);
-    expect(service.campaigns[0]).toMatchObject({ id: 'welcome', name: 'Bienvenida' });
+    expect(service.campaigns[0]).toMatchObject({
+      id: 'welcome',
+      name: 'Bienvenida',
+    });
   });
 
-  it('fails clearly when clients.json is missing', () => {
+  it('defaults clients to an empty list when clients.json is missing', () => {
     writeConfig('bot.config.json', { identity: { name: 'Bot' } });
     writeConfig('knowledge.json', []);
 
     const service = new ConfigLoaderService();
+    service.onModuleInit();
 
-    expect(() => service.onModuleInit()).toThrow(/clients\.json/);
+    expect(service.clients).toEqual([]);
   });
 
   function writeConfig(filename: string, value: unknown): void {
-    writeFileSync(join(tempDir, 'config', filename), JSON.stringify(value), 'utf-8');
+    writeFileSync(
+      join(tempDir, 'config', filename),
+      JSON.stringify(value),
+      'utf-8',
+    );
   }
 });

@@ -50,7 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
 async function api(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (state.token) headers['X-Admin-Token'] = state.token;
-  if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  if (options.body && !headers['Content-Type'])
+    headers['Content-Type'] = 'application/json';
   const res = await fetch(path, { ...options, headers });
   if (!res.ok) throw new Error(await res.text());
   return res.text().then((text) => (text ? JSON.parse(text) : null));
@@ -63,8 +64,16 @@ function saveToken() {
 }
 
 function switchView(view) {
-  document.querySelectorAll('.nav').forEach((button) => button.classList.toggle('active', button.dataset.view === view));
-  document.querySelectorAll('.view').forEach((section) => section.classList.toggle('active', section.id === view));
+  document
+    .querySelectorAll('.nav')
+    .forEach((button) =>
+      button.classList.toggle('active', button.dataset.view === view),
+    );
+  document
+    .querySelectorAll('.view')
+    .forEach((section) =>
+      section.classList.toggle('active', section.id === view),
+    );
   $('#viewTitle').textContent = views[view][0];
   $('#viewSubtitle').textContent = views[view][1];
   void refreshCurrent();
@@ -87,7 +96,9 @@ async function loadDashboard() {
     api('/api/campaign-runs'),
     api('/api/audit?limit=8'),
   ]);
-  const activeRuns = runs.filter((run) => ['queued', 'running', 'paused'].includes(run.status));
+  const activeRuns = runs.filter((run) =>
+    ['queued', 'running', 'paused'].includes(run.status),
+  );
   $('#metrics').innerHTML = [
     metric('IA', status.aiProvider),
     metric('Sesiones', status.activeSessions),
@@ -104,8 +115,10 @@ function metric(label, value) {
 
 async function loadClients() {
   const params = new URLSearchParams();
-  if ($('#clientSearch').value.trim()) params.set('q', $('#clientSearch').value.trim());
-  if ($('#clientTag').value.trim()) params.set('tag', $('#clientTag').value.trim());
+  if ($('#clientSearch').value.trim())
+    params.set('q', $('#clientSearch').value.trim());
+  if ($('#clientTag').value.trim())
+    params.set('tag', $('#clientTag').value.trim());
   params.set('limit', String(state.clientPagination.limit));
   params.set('offset', String(state.clientPagination.offset));
   const result = await api(`/api/clients?${params.toString()}`);
@@ -132,7 +145,12 @@ async function loadClients() {
       list(client.tags),
     ]),
   );
-  $('#clientPagination').innerHTML = renderPagination(offset, limit, total, 'client');
+  $('#clientPagination').innerHTML = renderPagination(
+    offset,
+    limit,
+    total,
+    'client',
+  );
 }
 
 async function previewImport() {
@@ -174,22 +192,29 @@ async function commitImport() {
 }
 
 async function loadCampaigns() {
-  const [campaigns] = await Promise.all([api('/api/campaigns'), loadCampaignRuns()]);
+  const [campaigns] = await Promise.all([
+    api('/api/campaigns'),
+    loadCampaignRuns(),
+  ]);
   state.campaigns = campaigns;
   $('#campaignList').innerHTML = table(
     ['ID', 'Nombre', 'Modo', 'Estado', 'Acciones'],
     campaigns.map((campaign) => {
-      const mode = campaign.messageMode ?? (campaign.template ? 'template' : 'ai');
-      const modePill = mode === 'template'
-        ? '<span class="pill pill-template">Fijo</span>'
-        : '<span class="pill pill-ai">IA</span>';
+      const mode =
+        campaign.messageMode ?? (campaign.template ? 'template' : 'ai');
+      const modePill =
+        mode === 'template'
+          ? '<span class="pill pill-template">Fijo</span>'
+          : '<span class="pill pill-ai">IA</span>';
       const toggleLabel = campaign.enabled ? 'Desactivar' : 'Activar';
       const toggleClass = campaign.enabled ? 'btn-danger' : 'btn-ok';
       return [
         campaign.id,
         campaign.name,
         modePill,
-        campaign.enabled ? '<span class="pill">activa</span>' : '<span class="pill danger">inactiva</span>',
+        campaign.enabled
+          ? '<span class="pill">activa</span>'
+          : '<span class="pill danger">inactiva</span>',
         `<div class="row-actions">
           <button data-action="toggle-campaign" data-id="${campaign.id}" data-enabled="${campaign.enabled}" class="${toggleClass}">${toggleLabel}</button>
           <button data-action="preview-campaign" data-id="${campaign.id}">Preview</button>
@@ -203,7 +228,9 @@ async function loadCampaigns() {
 
 async function loadCampaignRuns() {
   const status = $('#runStatus')?.value || '';
-  state.runs = await api(`/api/campaign-runs${status ? `?status=${encodeURIComponent(status)}` : ''}`);
+  state.runs = await api(
+    `/api/campaign-runs${status ? `?status=${encodeURIComponent(status)}` : ''}`,
+  );
   $('#campaignRuns').innerHTML = renderRunsTable(state.runs, true);
   return state.runs;
 }
@@ -211,7 +238,13 @@ async function loadCampaignRuns() {
 function renderRunsTable(runs, actions = false) {
   if (!runs.length) return '<p class="muted">Sin corridas.</p>';
   return table(
-    ['ID', 'Campaña', 'Estado', 'Totales', actions ? 'Acciones' : 'Actualizado'],
+    [
+      'ID',
+      'Campaña',
+      'Estado',
+      'Totales',
+      actions ? 'Acciones' : 'Actualizado',
+    ],
     runs.map((run) => [
       short(run.id),
       run.campaignId,
@@ -233,16 +266,23 @@ async function showRun(runId) {
     state.campaignLog.timer = setInterval(async () => {
       if (!state.campaignLog.runId) return;
       try {
-        const updated = await api(`/api/campaign-runs/${state.campaignLog.runId}`);
+        const updated = await api(
+          `/api/campaign-runs/${state.campaignLog.runId}`,
+        );
         renderRunDetail(updated);
         if (!['queued', 'running'].includes(updated.status)) stopRunLog();
-      } catch { /* ignore network blip */ }
+      } catch {
+        /* ignore network blip */
+      }
     }, 3000);
   }
 }
 
 function stopRunLog() {
-  if (state.campaignLog.timer) { clearInterval(state.campaignLog.timer); state.campaignLog.timer = null; }
+  if (state.campaignLog.timer) {
+    clearInterval(state.campaignLog.timer);
+    state.campaignLog.timer = null;
+  }
   state.campaignLog.runId = null;
 }
 
@@ -257,9 +297,18 @@ function renderRunDetail(run) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const isLive = ['queued', 'running'].includes(run.status);
 
-  const statusCls = { running: 'pill-ai', paused: 'danger', cancelled: 'danger' }[run.status] || '';
+  const statusCls =
+    { running: 'pill-ai', paused: 'danger', cancelled: 'danger' }[run.status] ||
+    '';
   const jobBadge = (s) => {
-    const cls = { sending: 'pill-ai', sent: 'pill-sent', failed: 'danger', cancelled: 'danger', skipped: 'pill-muted' }[s] || '';
+    const cls =
+      {
+        sending: 'pill-ai',
+        sent: 'pill-sent',
+        failed: 'danger',
+        cancelled: 'danger',
+        skipped: 'pill-muted',
+      }[s] || '';
     return `<span class="pill ${cls}">${escapeHtml(s)}</span>`;
   };
 
@@ -295,7 +344,10 @@ function renderRunDetail(run) {
 }
 
 async function loadSessions() {
-  const [sessions, paused] = await Promise.all([api('/api/sessions'), api('/api/paused')]);
+  const [sessions, paused] = await Promise.all([
+    api('/api/sessions'),
+    api('/api/paused'),
+  ]);
   state.sessions = sessions;
   state.paused = paused.senders || [];
   $('#sessionsTable').innerHTML = table(
@@ -309,14 +361,22 @@ async function loadSessions() {
     ]),
   );
   $('#pausedList').innerHTML = state.paused.length
-    ? table(['Sender', 'Acción'], state.paused.map((sender) => [sender, `<button data-action="resume-one" data-id="${sender}">Reanudar</button>`]))
+    ? table(
+        ['Sender', 'Acción'],
+        state.paused.map((sender) => [
+          sender,
+          `<button data-action="resume-one" data-id="${sender}">Reanudar</button>`,
+        ]),
+      )
     : '<p class="muted">No hay pausados.</p>';
 }
 
 async function loadAudit() {
   const params = new URLSearchParams({ limit: '100' });
-  if ($('#auditEntity').value.trim()) params.set('entityType', $('#auditEntity').value.trim());
-  if ($('#auditAction').value.trim()) params.set('action', $('#auditAction').value.trim());
+  if ($('#auditEntity').value.trim())
+    params.set('entityType', $('#auditEntity').value.trim());
+  if ($('#auditAction').value.trim())
+    params.set('action', $('#auditAction').value.trim());
   const response = await api(`/api/audit?${params.toString()}`);
   state.audit = response.events;
   $('#auditTable').innerHTML = renderAuditTable(state.audit);
@@ -326,7 +386,13 @@ function renderAuditTable(events) {
   if (!events.length) return '<p class="muted">Sin eventos.</p>';
   return table(
     ['Fecha', 'Entidad', 'Acción', 'ID', 'Origen'],
-    events.map((event) => [date(event.createdAt), event.entityType, event.action, event.entityId || '-', event.source || event.actor]),
+    events.map((event) => [
+      date(event.createdAt),
+      event.entityType,
+      event.action,
+      event.entityId || '-',
+      event.source || event.actor,
+    ]),
   );
 }
 
@@ -335,37 +401,66 @@ async function handleAction(event) {
   if (!button) return;
   const { action, id } = button.dataset;
   try {
-    if (action === 'load-clients') { state.clientPagination.offset = 0; await loadClients(); }
+    if (action === 'load-clients') {
+      state.clientPagination.offset = 0;
+      await loadClients();
+    }
     if (action === 'page-client') {
       const { offset, limit, total } = state.clientPagination;
-      if (id === 'prev') state.clientPagination.offset = Math.max(0, offset - limit);
-      if (id === 'next') state.clientPagination.offset = Math.min(Math.max(0, total - limit), offset + limit);
+      if (id === 'prev')
+        state.clientPagination.offset = Math.max(0, offset - limit);
+      if (id === 'next')
+        state.clientPagination.offset = Math.min(
+          Math.max(0, total - limit),
+          offset + limit,
+        );
       await loadClients();
     }
     if (action === 'preview-import') await previewImport();
     if (action === 'commit-import') await commitImport();
     if (action === 'process-worker') {
-      const result = await api('/api/campaign-runs/process', { method: 'POST' });
+      const result = await api('/api/campaign-runs/process', {
+        method: 'POST',
+      });
       toast(`${result.processed} jobs procesados`);
       await loadDashboard();
     }
     if (action === 'toggle-campaign') {
       const nowEnabled = button.dataset.enabled === 'true';
-      await api(`/api/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled: !nowEnabled }) });
+      await api(`/api/campaigns/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: !nowEnabled }),
+      });
       toast(`Campaña ${!nowEnabled ? 'activada' : 'desactivada'}`);
       await loadCampaigns();
     }
     if (action === 'preview-campaign') {
-      const result = await api(`/api/campaigns/${id}/preview`, { method: 'POST', body: JSON.stringify({ limit: 5 }) });
-      $('#runDetail').innerHTML = table(['Teléfono', 'Nombre', 'Mensaje'], result.map((item) => [item.phone, item.name || '-', item.message || item.reason || '-']));
+      const result = await api(`/api/campaigns/${id}/preview`, {
+        method: 'POST',
+        body: JSON.stringify({ limit: 5 }),
+      });
+      $('#runDetail').innerHTML = table(
+        ['Teléfono', 'Nombre', 'Mensaje'],
+        result.map((item) => [
+          item.phone,
+          item.name || '-',
+          item.message || item.reason || '-',
+        ]),
+      );
     }
     if (action === 'run-campaign') {
-      const run = await api(`/api/campaigns/${id}/runs`, { method: 'POST', body: JSON.stringify({}) });
+      const run = await api(`/api/campaigns/${id}/runs`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
       toast(`Corrida creada ${short(run.id)}`);
       await loadCampaignRuns();
     }
     if (action === 'send-now') {
-      const result = await api(`/api/campaigns/${id}/send-now`, { method: 'POST', body: JSON.stringify({}) });
+      const result = await api(`/api/campaigns/${id}/send-now`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
       const jobsSent = result.run?.totals?.sent ?? 0;
       const jobsQueued = result.run?.totals?.queued ?? 0;
       toast(`⚡ Enviado: ${jobsSent} mensajes, en cola: ${jobsQueued}`);
@@ -384,7 +479,10 @@ async function handleAction(event) {
       await loadSessions();
     }
     if (action === 'resume-one') {
-      await api('/api/resume', { method: 'POST', body: JSON.stringify({ number: id }) });
+      await api('/api/resume', {
+        method: 'POST',
+        body: JSON.stringify({ number: id }),
+      });
       await loadSessions();
     }
     if (action === 'load-audit') await loadAudit();
@@ -398,20 +496,28 @@ async function handleAction(event) {
 }
 
 function renderPagination(offset, limit, total, prefix) {
-  if (total <= limit) return '';
-  const currentPage = Math.floor(offset / limit) + 1;
-  const totalPages = Math.ceil(total / limit);
+  const currentPage = total === 0 ? 0 : Math.floor(offset / limit) + 1;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const from = total === 0 ? 0 : offset + 1;
+  const to = Math.min(offset + limit, total);
+  const prevDisabled = offset === 0 || total <= limit;
+  const nextDisabled = offset + limit >= total || total <= limit;
   return `<div class="pagination">
-    <button data-action="page-${prefix}" data-id="prev" ${offset === 0 ? 'disabled' : ''}>← Anterior</button>
-    <span class="page-info">Pág ${currentPage} de ${totalPages}</span>
-    <button data-action="page-${prefix}" data-id="next" ${offset + limit >= total ? 'disabled' : ''}>Siguiente →</button>
+    <span class="page-info">Mostrando ${from}-${to} de ${total} · Pag ${currentPage} de ${totalPages}</span>
+    <div class="pagination-actions">
+      <button data-action="page-${prefix}" data-id="prev" ${prevDisabled ? 'disabled' : ''}>&larr; Anterior</button>
+      <button data-action="page-${prefix}" data-id="next" ${nextDisabled ? 'disabled' : ''}>Siguiente &rarr;</button>
+    </div>
   </div>`;
 }
 
 function table(headers, rows) {
   if (!rows.length) return '<p class="muted">Sin datos.</p>';
   return `<table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows
-    .map((row) => `<tr>${row.map((cell) => `<td>${typeof cell === 'string' && cell.includes('<') ? cell : escapeHtml(String(cell ?? '-'))}</td>`).join('')}</tr>`)
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td>${typeof cell === 'string' && cell.includes('<') ? cell : escapeHtml(String(cell ?? '-'))}</td>`).join('')}</tr>`,
+    )
     .join('')}</tbody></table>`;
 }
 
@@ -472,7 +578,9 @@ function startGlobalLogSse() {
 
 function isWhatsAppClosedLog(entry) {
   const message = String(entry?.message || '').toLowerCase();
-  return entry?.level === 'ERROR' && message.includes('sesion de whatsapp cerrada');
+  return (
+    entry?.level === 'ERROR' && message.includes('sesion de whatsapp cerrada')
+  );
 }
 
 function showWhatsAppClosedAlert(message) {
@@ -480,7 +588,8 @@ function showWhatsAppClosedAlert(message) {
   if (!alert) return;
   $('#systemAlertTitle').textContent = 'Sesion de WhatsApp cerrada';
   $('#systemAlertText').textContent =
-    message || 'El bot quedo sin conexion. Reinicia el bot y escanea el QR nuevamente.';
+    message ||
+    'El bot quedo sin conexion. Reinicia el bot y escanea el QR nuevamente.';
   alert.hidden = false;
 }
 
@@ -522,17 +631,26 @@ function startWaSse() {
       state.wa.messages.push(msg);
 
       // update or insert sender
-      const existing = state.wa.senders.find((s) => s.senderId === msg.senderId);
+      const existing = state.wa.senders.find(
+        (s) => s.senderId === msg.senderId,
+      );
       if (existing) {
         existing.lastTs = msg.timestamp;
         if (msg.senderName) existing.senderName = msg.senderName;
       } else {
-        state.wa.senders.unshift({ senderId: msg.senderId, senderName: msg.senderName, lastTs: msg.timestamp });
+        state.wa.senders.unshift({
+          senderId: msg.senderId,
+          senderName: msg.senderName,
+          lastTs: msg.timestamp,
+        });
       }
       state.wa.senders.sort((a, b) => b.lastTs - a.lastTs);
 
       renderWaSidebar();
-      if (state.wa.activeSenderId === msg.senderId || state.wa.activeSenderId === null) {
+      if (
+        state.wa.activeSenderId === msg.senderId ||
+        state.wa.activeSenderId === null
+      ) {
         if (state.wa.activeSenderId === null) waSelectSender(msg.senderId);
         else appendWaBubble(msg);
       }
@@ -566,13 +684,18 @@ function renderWaSidebar() {
   }
 
   const allMsgs = state.wa.messages;
-  el.innerHTML = state.wa.senders.map((s) => {
-    const lastMsg = [...allMsgs].reverse().find((m) => m.senderId === s.senderId);
-    const preview = lastMsg ? (lastMsg.direction === 'out' ? '🤖 ' : '') + lastMsg.text.slice(0, 40) : '';
-    const initial = waInitial(s.senderName || s.senderId);
-    const active = state.wa.activeSenderId === s.senderId ? 'active' : '';
-    const timeStr = lastMsg ? waTime(lastMsg.timestamp) : '';
-    return `<div class="wa-contact ${active}" data-sender="${escapeHtml(s.senderId)}">
+  el.innerHTML = state.wa.senders
+    .map((s) => {
+      const lastMsg = [...allMsgs]
+        .reverse()
+        .find((m) => m.senderId === s.senderId);
+      const preview = lastMsg
+        ? (lastMsg.direction === 'out' ? '🤖 ' : '') + lastMsg.text.slice(0, 40)
+        : '';
+      const initial = waInitial(s.senderName || s.senderId);
+      const active = state.wa.activeSenderId === s.senderId ? 'active' : '';
+      const timeStr = lastMsg ? waTime(lastMsg.timestamp) : '';
+      return `<div class="wa-contact ${active}" data-sender="${escapeHtml(s.senderId)}">
       <div class="wa-contact-avatar">${escapeHtml(initial)}</div>
       <div class="wa-contact-info">
         <div class="wa-contact-name">${escapeHtml(waDisplayName(s))}</div>
@@ -580,7 +703,8 @@ function renderWaSidebar() {
       </div>
       <div class="wa-contact-time">${escapeHtml(timeStr)}</div>
     </div>`;
-  }).join('');
+    })
+    .join('');
 
   el.querySelectorAll('.wa-contact[data-sender]').forEach((el) => {
     el.addEventListener('click', () => waSelectSender(el.dataset.sender));
@@ -598,7 +722,9 @@ function renderWaMessages(senderId) {
   const msgs = state.wa.messages.filter((m) => m.senderId === senderId);
 
   // header
-  const initial = waInitial(sender ? (sender.senderName || sender.senderId) : senderId);
+  const initial = waInitial(
+    sender ? sender.senderName || sender.senderId : senderId,
+  );
   const displayName = sender ? waDisplayName(sender) : senderId;
   const phone = senderId.replace('@c.us', '').replace('@lid', '');
   $('#waChatAvatar').textContent = initial;
@@ -621,7 +747,11 @@ function renderWaBubbles(msgs) {
 
   for (const msg of msgs) {
     const d = new Date(msg.timestamp);
-    const dateLabel = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const dateLabel = d.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
     if (dateLabel !== lastDateLabel) {
       html += `<div class="wa-date-sep">${escapeHtml(dateLabel)}</div>`;
       lastDateLabel = dateLabel;
@@ -633,11 +763,18 @@ function renderWaBubbles(msgs) {
 
 function waBubbleHtml(msg) {
   const dir = msg.direction === 'out' ? 'out' : 'in';
-  const timeStr = new Date(msg.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = new Date(msg.timestamp).toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
   const tick = msg.direction === 'out' ? '<span class="wa-tick">✓✓</span>' : '';
-  const senderLabel = msg.direction === 'in' && msg.senderName
-    ? `<div class="wa-sender-label">${escapeHtml(msg.senderName)}</div>` : '';
-  const mediaTag = msg.mediaType ? `<em style="font-size:12px;color:#888">[${escapeHtml(msg.mediaType)}]</em> ` : '';
+  const senderLabel =
+    msg.direction === 'in' && msg.senderName
+      ? `<div class="wa-sender-label">${escapeHtml(msg.senderName)}</div>`
+      : '';
+  const mediaTag = msg.mediaType
+    ? `<em style="font-size:12px;color:#888">[${escapeHtml(msg.mediaType)}]</em> `
+    : '';
   return `<div class="wa-row ${dir}">
     ${senderLabel}
     <div class="wa-bubble">
@@ -658,10 +795,17 @@ function appendWaBubble(msg) {
 
   // date separator if needed
   const d = new Date(msg.timestamp);
-  const dateLabel = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const dateLabel = d.toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
   const lastSep = container.querySelector('.wa-date-sep:last-of-type');
   if (!lastSep || lastSep.textContent !== dateLabel) {
-    container.insertAdjacentHTML('beforeend', `<div class="wa-date-sep">${escapeHtml(dateLabel)}</div>`);
+    container.insertAdjacentHTML(
+      'beforeend',
+      `<div class="wa-date-sep">${escapeHtml(dateLabel)}</div>`,
+    );
   }
 
   container.insertAdjacentHTML('beforeend', waBubbleHtml(msg));
@@ -669,7 +813,11 @@ function appendWaBubble(msg) {
 }
 
 function waInitial(name) {
-  return String(name || '?').replace('@c.us', '').replace('@lid', '').slice(0, 2).toUpperCase();
+  return String(name || '?')
+    .replace('@c.us', '')
+    .replace('@lid', '')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function waDisplayName(sender) {
@@ -681,7 +829,11 @@ function waTime(ts) {
   const d = new Date(ts);
   const now = new Date();
   const diffDays = Math.floor((now - d) / 86400000);
-  if (diffDays === 0) return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 0)
+    return d.toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   if (diffDays === 1) return 'Ayer';
   if (diffDays < 7) return d.toLocaleDateString('es-AR', { weekday: 'short' });
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
@@ -709,17 +861,22 @@ function startConsoleSse() {
       state.console.entries.push(entry);
       if (state.console.entries.length > 500) state.console.entries.shift();
       if (!state.console.paused) appendConsoleRow(entry);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 }
 
 function stopConsoleSse() {
-  if (state.console.sse) { state.console.sse.close(); state.console.sse = null; }
+  if (state.console.sse) {
+    state.console.sse.close();
+    state.console.sse = null;
+  }
 }
 
 function levelClass(level) {
   if (level === 'ERROR') return 'log-error';
-  if (level === 'WARN')  return 'log-warn';
+  if (level === 'WARN') return 'log-warn';
   if (level === 'DEBUG') return 'log-debug';
   return 'log-info';
 }
@@ -728,10 +885,15 @@ function renderConsole() {
   const output = $('#consoleOutput');
   if (!output) return;
   const filterLevel = $('#consoleLevel')?.value || '';
-  const filterText  = ($('#consoleFilter')?.value || '').toLowerCase();
+  const filterText = ($('#consoleFilter')?.value || '').toLowerCase();
   const filtered = state.console.entries.filter((e) => {
     if (filterLevel && e.level !== filterLevel) return false;
-    if (filterText && !e.message.toLowerCase().includes(filterText) && !e.context.toLowerCase().includes(filterText)) return false;
+    if (
+      filterText &&
+      !e.message.toLowerCase().includes(filterText) &&
+      !e.context.toLowerCase().includes(filterText)
+    )
+      return false;
     return true;
   });
   output.innerHTML = filtered.map((e) => consoleRowHtml(e)).join('');
@@ -739,7 +901,11 @@ function renderConsole() {
 }
 
 function consoleRowHtml(e) {
-  const time = new Date(e.ts).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const time = new Date(e.ts).toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
   return `<div class="console-row ${levelClass(e.level)}"><span class="console-ts">${escapeHtml(time)}</span><span class="console-level">${escapeHtml(e.level)}</span><span class="console-ctx">${escapeHtml(e.context)}</span><span class="console-msg">${escapeHtml(e.message)}</span></div>`;
 }
 
@@ -747,9 +913,14 @@ function appendConsoleRow(entry) {
   const output = $('#consoleOutput');
   if (!output) return;
   const filterLevel = $('#consoleLevel')?.value || '';
-  const filterText  = ($('#consoleFilter')?.value || '').toLowerCase();
+  const filterText = ($('#consoleFilter')?.value || '').toLowerCase();
   if (filterLevel && entry.level !== filterLevel) return;
-  if (filterText && !entry.message.toLowerCase().includes(filterText) && !entry.context.toLowerCase().includes(filterText)) return;
+  if (
+    filterText &&
+    !entry.message.toLowerCase().includes(filterText) &&
+    !entry.context.toLowerCase().includes(filterText)
+  )
+    return;
   output.insertAdjacentHTML('beforeend', consoleRowHtml(entry));
   output.scrollTop = output.scrollHeight;
 }
