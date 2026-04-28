@@ -17,6 +17,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
   private readonly logger = new Logger(WhatsAppAdapter.name);
   private client: Client;
   private readyAt: number | null = null;
+  private connected = false;
   private readonly enabled = process.env['WHATSAPP_ENABLED'] !== 'false';
   private readonly initTimeoutMs = Number.parseInt(process.env['WHATSAPP_INIT_TIMEOUT_MS'] ?? '45000', 10);
 
@@ -89,6 +90,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
 
     this.client.on('ready', async () => {
       this.readyAt = Date.now();
+      this.connected = true;
       this.logger.log('WhatsApp client is ready!');
       this.printPanelReady();
       void this.logAvailableGroups();
@@ -111,6 +113,7 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
     });
 
     this.client.on('disconnected', (reason) => {
+      this.connected = false;
       this.logger.error(
         `Sesion de WhatsApp cerrada desde el celular o navegador. Motivo: ${reason}. Reinicia el bot y escanea el QR nuevamente.`,
       );
@@ -173,10 +176,14 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
    */
   async sendBroadcast(recipientId: string, text: string): Promise<void> {
     this.logger.debug(`sendBroadcast → adding ${recipientId} to botSendingTo`);
-    this.markBotSending(recipientId, text);
+    // Add invisible variation per recipient so each message has a unique content hash.
+    // Zero-width Unicode chars are invisible to the human but break spam fingerprinting.
+    const variedText = this.addInvisibleVariation(text, recipientId);
+    this.markBotSending(recipientId, variedText);
     try {
-      const sent = await this.client.sendMessage(recipientId, text);
-      this.markBotSentMessage(recipientId, text, sent);
+      await this.simulateBroadcastTyping(recipientId, variedText);
+      const sent = await this.client.sendMessage(recipientId, variedText);
+      this.markBotSentMessage(recipientId, variedText, sent);
       this.logger.debug(`Broadcast sent to ${recipientId}`);
     } catch (error) {
       this.logger.error(`Broadcast failed to ${recipientId}: ${(error as Error).message}`);
@@ -188,6 +195,45 @@ export class WhatsAppAdapter implements MessageAdapter, OnApplicationBootstrap {
         this.botSendingTo.delete(recipientId);
         this.logger.debug(`sendBroadcast → removed ${recipientId} from botSendingTo`);
       }, 3000);
+    }
+  }
+
+  /** Shows "typing..." indicator before sending a broadcast/campaign message. */
+  private async simulateBroadcastTyping(recipientId: string, text: string): Promise<void> {
+    // 20ms per char, clamped between 1.5s and 6s — realistic for a short WA message
+    const typingMs = Math.min(Math.max(text.length * 20, 1500), 6000);
+    try {
+      const chat = await this.client.getChatById(recipientId);
+      await chat.sendStateTyping();
+      await new Promise((resolve) => setTimeout(resolve, typingMs));
+      await chat.clearState();
+    } catch {
+      // Chat may not exist yet (new contact) — just wait the equivalent time
+      await new Promise((resolve) => setTimeout(resolve, typingMs));
+    }
+  }
+
+  /** Appends a zero-width Unicode char unique to each recipient.
+   *  Makes the content hash different per message without any visible change. */
+  private addInvisibleVariation(text: string, recipientId: string): string {
+    const markers = ['​', '‌', '‍'];
+    const digits = recipientId.replace(/\D/g, '');
+    const sum = digits.split('').reduce((s, c) => s + Number(c), 0);
+    return text + markers[sum % markers.length];
+  }
+
+  get isConnected(): boolean {
+    return this.connected;
+  }
+
+  /** Sends an alert to the configured control group. Safe to call even if WA is disconnected. */
+  async sendControlAlert(message: string): Promise<void> {
+    const groupId = this.botConfig.controlGroupId;
+    if (!groupId || !this.connected) return;
+    try {
+      await this.client.sendMessage(groupId, message);
+    } catch (err) {
+      this.logger.warn(`sendControlAlert failed: ${(err as Error).message}`);
     }
   }
 

@@ -48,6 +48,10 @@ interface CampaignJobRow {
 export class CampaignService {
   private readonly logger = new Logger(CampaignService.name);
 
+  /** Populated after each processNextQueuedJob call — null on success, Error on send failure.
+   *  The worker reads this to decide whether to auto-pause. */
+  lastSendError: Error | null = null;
+
   constructor(
     private readonly configLoader: ConfigLoaderService,
     private readonly clientsService: ClientsService,
@@ -309,6 +313,7 @@ export class CampaignService {
 
     try {
       await this.sendJobMessage(job.phone, job.message, job.campaign_id);
+      this.lastSendError = null;
       this.database.connection
         .prepare("UPDATE campaign_jobs SET status = 'sent', error = NULL, updated_at = ? WHERE id = ?")
         .run(new Date().toISOString(), job.id);
@@ -321,6 +326,7 @@ export class CampaignService {
       });
       this.logger.log(`Run ${runId}: job ${job.id} sent to ${job.phone} in ${Date.now() - startedAt}ms`);
     } catch (error) {
+      this.lastSendError = error as Error;
       const attempts = job.attempts + 1;
       const status = attempts >= job.max_attempts ? 'failed' : 'queued';
       const retryAt = this.nextRetryAt(job.campaign_id);
@@ -444,8 +450,10 @@ export class CampaignService {
         throw new Error(`Campaign "${campaign.id}" tiene messageMode='template' pero no tiene campo 'template' definido.`);
       }
       const rendered = this.interpolate(campaign.template, vars);
-      this.logger.debug(`${prefix} mode=template completed in ${Date.now() - startedAt}ms chars=${rendered.length}`);
-      return rendered;
+      // Rotate opening greeting per recipient so identical templates produce different content.
+      const varied = this.varyOpeningGreeting(rendered, client.phone);
+      this.logger.debug(`${prefix} mode=template completed in ${Date.now() - startedAt}ms chars=${varied.length}`);
+      return varied;
     }
 
     const prompt = this.interpolate(campaign.aiPrompt ?? 'Escribi un mensaje breve para {name}.', vars);
@@ -499,5 +507,25 @@ export class CampaignService {
   private nextRetryAt(campaignId: string): string {
     const backoffMs = Math.max(this.getCampaign(campaignId)?.retry?.backoffMs ?? 0, 0);
     return new Date(Date.now() + backoffMs).toISOString();
+  }
+
+  /** Rotates the opening greeting word based on the recipient's phone number so
+   *  template messages have different content hashes across recipients. */
+  private varyOpeningGreeting(text: string, phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    const seed = digits.split('').reduce((s, c) => s + Number(c), 0);
+
+    // Map of patterns → replacement variants (first entry is always the original form)
+    const variants: Array<[RegExp, string[]]> = [
+      [/^Hola,?\s/i,   ['Hola ', 'Buenas ', 'Buen día ', 'Hola! ']],
+      [/^Buenas,?\s/i, ['Buenas ', 'Hola ', 'Buen día ']],
+    ];
+
+    for (const [pattern, options] of variants) {
+      if (pattern.test(text)) {
+        return text.replace(pattern, options[seed % options.length]);
+      }
+    }
+    return text;
   }
 }

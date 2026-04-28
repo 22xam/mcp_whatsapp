@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { CampaignService } from './campaign.service';
 import { ConfigLoaderService } from '../config/config-loader.service';
+import { WhatsAppAdapter } from '../messaging/adapters/whatsapp.adapter';
 
 @Injectable()
 export class CampaignWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -19,9 +20,15 @@ export class CampaignWorkerService implements OnApplicationBootstrap, OnModuleDe
   private lastHourReset = new Date().getHours();
   private batchPauseUntil = 0;
 
+  // Throttle inteligente
+  private consecutiveErrors = 0;
+  private readonly ERROR_THRESHOLD = 3;
+  private autoPausedAt: number | null = null;
+
   constructor(
     private readonly campaignService: CampaignService,
     private readonly configLoader: ConfigLoaderService,
+    private readonly whatsAppAdapter: WhatsAppAdapter,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -122,8 +129,33 @@ export class CampaignWorkerService implements OnApplicationBootstrap, OnModuleDe
           continue;
         }
 
+        // Verificar conexión WA antes de intentar enviar
+        if (!this.whatsAppAdapter.isConnected) {
+          this.logger.warn('Campaign worker: WhatsApp disconnected — auto-pausing all runs');
+          await this.pauseAllRunsAndAlert('desconexión de WhatsApp', null);
+          break;
+        }
+
         await this.campaignService.processNextQueuedJob(runId);
         this.lastProcessedAt.set(runId, Date.now());
+
+        const sendErr = this.campaignService.lastSendError;
+        if (sendErr) {
+          this.consecutiveErrors++;
+          this.logger.warn(
+            `Campaign worker: send error #${this.consecutiveErrors} for run ${runId}: ${sendErr.message}`,
+          );
+          if (this.isDisconnectionError(sendErr) || this.consecutiveErrors >= this.ERROR_THRESHOLD) {
+            const reason = this.isDisconnectionError(sendErr)
+              ? 'desconexión de WhatsApp durante el envío'
+              : `${this.consecutiveErrors} errores consecutivos de envío`;
+            await this.pauseAllRunsAndAlert(reason, sendErr);
+            break;
+          }
+        } else {
+          this.consecutiveErrors = 0;
+        }
+
         this.sentToday++;
         this.sentThisHour++;
         this.sentInBatch++;
@@ -202,5 +234,54 @@ export class CampaignWorkerService implements OnApplicationBootstrap, OnModuleDe
     const startMinutes = sh * 60 + sm;
     const endMinutes = eh * 60 + em;
     return nowMinutes < startMinutes || nowMinutes >= endMinutes;
+  }
+
+  private isDisconnectionError(error: Error): boolean {
+    const msg = error.message.toLowerCase();
+    return (
+      msg.includes('session') ||
+      msg.includes('disconnected') ||
+      msg.includes('closed') ||
+      msg.includes('destroyed') ||
+      msg.includes('target') ||
+      msg.includes('protocol error') ||
+      msg.includes('navigation')
+    );
+  }
+
+  private async pauseAllRunsAndAlert(reason: string, error: Error | null): Promise<void> {
+    if (this.autoPausedAt && Date.now() - this.autoPausedAt < 60_000) return; // debounce 1 min
+    this.autoPausedAt = Date.now();
+    this.consecutiveErrors = 0;
+
+    const runIds = this.campaignService.getActiveRunIds();
+    if (runIds.length === 0) return;
+
+    const paused: string[] = [];
+    for (const runId of runIds) {
+      try {
+        await this.campaignService.setRunStatus(runId, 'paused');
+        paused.push(runId.slice(0, 8));
+      } catch {
+        // best effort
+      }
+    }
+
+    this.logger.warn(`Campaign worker: auto-paused ${paused.length} run(s) — reason: ${reason}`);
+
+    const errorLine = error ? `\n*Error:* ${error.message.slice(0, 120)}` : '';
+    const runLine = paused.map((id) => `\`${id}\``).join(', ');
+    const waitNote = this.isDisconnectionError(error ?? new Error(''))
+      ? 'Reconectá el número y luego reanudá desde el panel.'
+      : 'Esperá al menos 15 minutos antes de reanudar.';
+
+    const msg =
+      `🚨 *Bot Oscar — Campaña auto-pausada*\n\n` +
+      `*Motivo:* ${reason}${errorLine}\n` +
+      `*Corridas pausadas:* ${runLine}\n\n` +
+      `${waitNote}\n` +
+      `Panel → Campañas → Corridas → Reanudar`;
+
+    await this.whatsAppAdapter.sendControlAlert(msg);
   }
 }

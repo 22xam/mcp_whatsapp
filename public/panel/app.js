@@ -6,6 +6,8 @@ const state = {
   sessions: [],
   paused: [],
   audit: [],
+  clientPagination: { offset: 0, limit: 50, total: 0 },
+  campaignLog: { runId: null, timer: null },
   wa: {
     activeSenderId: null,
     messages: [],
@@ -104,8 +106,22 @@ async function loadClients() {
   const params = new URLSearchParams();
   if ($('#clientSearch').value.trim()) params.set('q', $('#clientSearch').value.trim());
   if ($('#clientTag').value.trim()) params.set('tag', $('#clientTag').value.trim());
-  state.clients = await api(`/api/clients?${params.toString()}`);
-  $('#clientCount').textContent = state.clients.length;
+  params.set('limit', String(state.clientPagination.limit));
+  params.set('offset', String(state.clientPagination.offset));
+  const result = await api(`/api/clients?${params.toString()}`);
+  state.clients = result.data;
+  state.clientPagination.total = result.total;
+
+  // Clamp offset if filter narrowed the result set
+  if (state.clientPagination.offset >= result.total && result.total > 0) {
+    state.clientPagination.offset = 0;
+    return loadClients();
+  }
+
+  const { offset, limit, total } = state.clientPagination;
+  const from = total === 0 ? 0 : offset + 1;
+  const to = Math.min(offset + limit, total);
+  $('#clientCount').textContent = `${from}–${to} de ${total}`;
   $('#clientsTable').innerHTML = table(
     ['Nombre', 'Teléfono', 'Empresa', 'Sistemas', 'Tags'],
     state.clients.map((client) => [
@@ -116,6 +132,7 @@ async function loadClients() {
       list(client.tags),
     ]),
   );
+  $('#clientPagination').innerHTML = renderPagination(offset, limit, total, 'client');
 }
 
 async function previewImport() {
@@ -207,12 +224,74 @@ function renderRunsTable(runs, actions = false) {
   );
 }
 
-async function showRun(id) {
-  const run = await api(`/api/campaign-runs/${id}`);
-  $('#runDetail').innerHTML = table(
-    ['Teléfono', 'Nombre', 'Estado', 'Intentos', 'Error'],
-    run.jobs.map((job) => [job.phone, job.name || '-', job.status, `${job.attempts}/${job.maxAttempts}`, job.error || '-']),
-  );
+async function showRun(runId) {
+  stopRunLog();
+  state.campaignLog.runId = runId;
+  const run = await api(`/api/campaign-runs/${runId}`);
+  renderRunDetail(run);
+  if (['queued', 'running'].includes(run.status)) {
+    state.campaignLog.timer = setInterval(async () => {
+      if (!state.campaignLog.runId) return;
+      try {
+        const updated = await api(`/api/campaign-runs/${state.campaignLog.runId}`);
+        renderRunDetail(updated);
+        if (!['queued', 'running'].includes(updated.status)) stopRunLog();
+      } catch { /* ignore network blip */ }
+    }, 3000);
+  }
+}
+
+function stopRunLog() {
+  if (state.campaignLog.timer) { clearInterval(state.campaignLog.timer); state.campaignLog.timer = null; }
+  state.campaignLog.runId = null;
+}
+
+function renderRunDetail(run) {
+  const totals = run.totals || {};
+  const total = totals.total || run.jobs.length || 0;
+  const sent = totals.sent || 0;
+  const failed = totals.failed || 0;
+  const queued = totals.queued || 0;
+  const skipped = totals.skipped || 0;
+  const done = sent + failed + skipped;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const isLive = ['queued', 'running'].includes(run.status);
+
+  const statusCls = { running: 'pill-ai', paused: 'danger', cancelled: 'danger' }[run.status] || '';
+  const jobBadge = (s) => {
+    const cls = { sending: 'pill-ai', sent: 'pill-sent', failed: 'danger', cancelled: 'danger', skipped: 'pill-muted' }[s] || '';
+    return `<span class="pill ${cls}">${escapeHtml(s)}</span>`;
+  };
+
+  $('#runDetail').innerHTML = `
+    <div class="run-header">
+      <div class="run-meta">
+        <span><strong>Run:</strong> <code>${escapeHtml(short(run.id))}</code></span>
+        <span><strong>Campaña:</strong> ${escapeHtml(run.campaignId)}</span>
+        <span class="pill ${statusCls}">${escapeHtml(run.status)}</span>
+        ${isLive ? '<span class="live-badge">● En vivo</span>' : ''}
+      </div>
+      <div class="run-counters">
+        <span class="cnt-ok">✅ ${sent} enviados</span>
+        <span class="cnt-q">⏳ ${queued} en cola</span>
+        <span class="cnt-err">❌ ${failed} fallidos</span>
+        <span class="cnt-sk">⏭ ${skipped} omitidos</span>
+      </div>
+      <div class="run-progress-wrap">
+        <div class="run-progress-bar"><div class="run-progress-fill" style="width:${pct}%"></div></div>
+        <span class="run-progress-label">${done} / ${total} &nbsp;(${pct}%)</span>
+      </div>
+    </div>
+    ${table(
+      ['Teléfono', 'Nombre', 'Estado', 'Intentos', 'Error'],
+      run.jobs.map((job) => [
+        job.phone,
+        job.name || '-',
+        jobBadge(job.status),
+        `${job.attempts}/${job.maxAttempts}`,
+        job.error || '-',
+      ]),
+    )}`;
 }
 
 async function loadSessions() {
@@ -256,7 +335,13 @@ async function handleAction(event) {
   if (!button) return;
   const { action, id } = button.dataset;
   try {
-    if (action === 'load-clients') await loadClients();
+    if (action === 'load-clients') { state.clientPagination.offset = 0; await loadClients(); }
+    if (action === 'page-client') {
+      const { offset, limit, total } = state.clientPagination;
+      if (id === 'prev') state.clientPagination.offset = Math.max(0, offset - limit);
+      if (id === 'next') state.clientPagination.offset = Math.min(Math.max(0, total - limit), offset + limit);
+      await loadClients();
+    }
     if (action === 'preview-import') await previewImport();
     if (action === 'commit-import') await commitImport();
     if (action === 'process-worker') {
@@ -310,6 +395,17 @@ async function handleAction(event) {
   } catch (error) {
     toast(error.message || 'Error');
   }
+}
+
+function renderPagination(offset, limit, total, prefix) {
+  if (total <= limit) return '';
+  const currentPage = Math.floor(offset / limit) + 1;
+  const totalPages = Math.ceil(total / limit);
+  return `<div class="pagination">
+    <button data-action="page-${prefix}" data-id="prev" ${offset === 0 ? 'disabled' : ''}>← Anterior</button>
+    <span class="page-info">Pág ${currentPage} de ${totalPages}</span>
+    <button data-action="page-${prefix}" data-id="next" ${offset + limit >= total ? 'disabled' : ''}>Siguiente →</button>
+  </div>`;
 }
 
 function table(headers, rows) {

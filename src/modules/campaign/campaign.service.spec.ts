@@ -64,7 +64,8 @@ describe('CampaignService', () => {
       status: 'queued',
       totals: { queued: 2, skipped: 0, total: 2 },
     });
-    expect(run.jobs.map((job: any) => job.message)).toEqual(['Hola Ana', 'Hola Luis']);
+    // Ana (digit-sum 28, 28%4=0) → 'Hola Ana'; Luis (digit-sum 38, 38%4=2) → 'Buen día Luis'
+    expect(run.jobs.map((job: any) => job.message)).toEqual(['Hola Ana', 'Buen día Luis']);
   });
 
   it('creates preview jobs for dry runs', async () => {
@@ -94,6 +95,31 @@ describe('CampaignService', () => {
       error: 'network down',
     });
     expect(new Date(failedJob.availableAt).getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('sets lastSendError to null after a successful send', async () => {
+    const created = await service.createRun('welcome');
+    await service.processNextQueuedJob(created.id);
+
+    expect(service.lastSendError).toBeNull();
+  });
+
+  it('sets lastSendError to an Error instance after a failed send', async () => {
+    whatsAppAdapter.sendBroadcast.mockRejectedValueOnce(new Error('network down'));
+    const created = await service.createRun('welcome');
+    await service.processNextQueuedJob(created.id);
+
+    expect(service.lastSendError).toBeInstanceOf(Error);
+    expect(service.lastSendError!.message).toBe('network down');
+  });
+
+  it('varyOpeningGreeting produces different greetings for different phone numbers', async () => {
+    const run = await service.createRun('welcome');
+    const messages = run.jobs.map((job: any) => job.message);
+
+    // Ana gets 'Hola', Luis gets 'Buen día' — same template, different outputs
+    expect(messages[0]).toMatch(/^Hola /);
+    expect(messages[1]).toMatch(/^Buen día /);
   });
 
   it('segments campaign audiences by tags', async () => {

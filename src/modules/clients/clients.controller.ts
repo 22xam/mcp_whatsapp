@@ -7,8 +7,19 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Get()
-  findAll(@Query('q') q?: string, @Query('tag') tag?: string, @Query('system') system?: string) {
-    return this.clientsService.search({ q, tag, system });
+  findAll(
+    @Query('q') q?: string,
+    @Query('tag') tag?: string,
+    @Query('system') system?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const all = this.clientsService.search({ q, tag, system });
+    // If no pagination params are sent return legacy flat array (backward compat)
+    if (limit === undefined && offset === undefined) return all;
+    const lim = Math.min(Math.max(Number(limit ?? 50), 1), 500);
+    const off = Math.max(Number(offset ?? 0), 0);
+    return { total: all.length, limit: lim, offset: off, data: all.slice(off, off + lim) };
   }
 
   @Get(':phone')
